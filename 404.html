@@ -4,6 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MyMainGoals</title>
+<script>
+  // Smart App Banner (Safari only — Chrome/Firefox on iOS don't render this, hence the
+  // manual button below too). app-argument carries this exact /verify/<token> URL through
+  // the App Store install, so iOS redelivers it to .onOpenURL the first time the app opens
+  // — the "install → open → app already knows the link" behavior. Built dynamically since
+  // this one static file serves every token's URL.
+  // TODO: swap in the real numeric App Store id once the app has a live listing.
+  var meta = document.createElement('meta');
+  meta.name = 'apple-itunes-app';
+  meta.content = 'app-id=0000000000, app-argument=' + window.location.href;
+  document.head.appendChild(meta);
+</script>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 80px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.6; text-align: center; }
   h1 { font-size: 20px; margin-bottom: 8px; }
@@ -12,22 +24,20 @@
 </style>
 </head>
 <body>
+  <!--
+    This page loads for any unmatched path (GitHub Pages' 404.html catch-all trick, since
+    static hosting can't route dynamic /verify/<token> paths natively). Reached only when
+    the app isn't installed — with the app installed, the Universal Link opens
+    VerifyGoalView directly and never reaches here.
+
+    Deliberately shows nothing about the goal — no title, stake, or deadline. Reading that
+    data now requires a signed-in app session (get_verification has no anon grant): the
+    person who composed the share message controls who reads it there, but a bare link
+    with no session attached shouldn't be able to pull anything from the database, even
+    non-sensitive fields.
+  -->
   <h1>Get MyMainGoals</h1>
-  <p class="muted">Open this link on a device with the app installed to see what you were asked to confirm.</p>
+  <p class="muted">Install the app to see what you were asked to confirm.</p>
   <a class="app-link" href="https://apps.apple.com/app/id0000000000">Get the app →</a>
-  <script>
-    // This page loads for any unmatched path (GitHub Pages' 404.html catch-all trick,
-    // since static hosting can't route dynamic /verify/<token> paths natively). Reached
-    // only when the app isn't installed — with the app installed, the Universal Link opens
-    // VerifyGoalView directly and never reaches here.
-    //
-    // Deliberately shows nothing about the goal — no title, stake, or deadline. Reading
-    // that data now requires a signed-in app session (get_verification has no anon grant),
-    // by design: the person who composed the share message controls who reads it there,
-    // but a bare link with no session attached shouldn't be able to pull anything from the
-    // database at all, even non-sensitive fields.
-    // TODO: swap in the real App Store URL once the app has a live listing.
-    window.location.replace("https://apps.apple.com/app/id0000000000");
-  </script>
 </body>
 </html>
