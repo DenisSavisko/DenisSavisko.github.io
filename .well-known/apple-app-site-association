@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appID": "C7A877V435.com.denyssavisko.MyMainGoals",
+        "paths": ["/verify/*"]
+      }
+    ]
+  }
+}
