@@ -5,89 +5,29 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>MyMainGoals</title>
 <style>
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 60px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.6; text-align: center; }
-  h1 { margin-bottom: 4px; font-size: 22px; }
-  p.stake { color: #d64545; font-weight: 600; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 80px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.6; text-align: center; }
+  h1 { font-size: 20px; margin-bottom: 8px; }
   p.muted { color: #666; font-size: 14px; }
   a.app-link { display: inline-block; margin-top: 24px; padding: 14px 28px; border-radius: 12px; background: #d64545; color: white; text-decoration: none; font-weight: 600; }
 </style>
 </head>
 <body>
-  <div id="content">
-    <p class="muted">Loading…</p>
-  </div>
+  <h1>Get MyMainGoals</h1>
+  <p class="muted">Open this link on a device with the app installed to see what you were asked to confirm.</p>
+  <a class="app-link" href="https://apps.apple.com/app/id0000000000">Get the app →</a>
   <script>
     // This page loads for any unmatched path (GitHub Pages' 404.html catch-all trick,
-    // since static hosting can't route dynamic /verify/<token> paths natively). Used only
-    // when the app isn't installed — with the app installed, this Universal Link opens
-    // VerifyGoalView directly instead and never reaches here.
+    // since static hosting can't route dynamic /verify/<token> paths natively). Reached
+    // only when the app isn't installed — with the app installed, the Universal Link opens
+    // VerifyGoalView directly and never reaches here.
     //
-    // View-only: confirming requires a signed-in app session (confirm_verification checks
-    // the caller's own auth.uid() to block self-confirmation), which an anonymous browser
-    // request can't provide — the anon role has no execute grant on that function at all.
-    // So this page just shows what the goal is and prompts installing the app to confirm.
-    const SUPABASE_URL = "https://uvituvxcjqcrdahecusr.supabase.co";
-    const PUBLISHABLE_KEY = "sb_publishable_fIzUvzpgzINwEtHrACL85w_So9HXoe2";
-    const APP_STORE_URL = "https://apps.apple.com/app/id0000000000"; // TODO: fill in once the app has a live App Store listing.
-
-    const content = document.getElementById("content");
-    const match = window.location.pathname.match(/^\/verify\/([0-9a-fA-F-]{36})\/?$/);
-
-    if (!match) {
-      content.innerHTML = "<h1>Page not found</h1>";
-    } else {
-      loadGoal(match[1]);
-    }
-
-    async function loadGoal(token) {
-      try {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/get_verification`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "apikey": PUBLISHABLE_KEY,
-            "Authorization": `Bearer ${PUBLISHABLE_KEY}`,
-          },
-          body: JSON.stringify({ p_token: token }),
-        });
-        if (!res.ok) throw new Error(await res.text());
-        const rows = await res.json();
-        const goal = rows[0];
-        if (!goal) {
-          content.innerHTML = "<h1>Link not found</h1><p class=\"muted\">This link may have expired or is no longer valid.</p>";
-          return;
-        }
-        render(goal);
-      } catch (e) {
-        content.innerHTML = "<h1>Something went wrong</h1><p class=\"muted\">Please try again in a moment.</p>";
-      }
-    }
-
-    function render(goal) {
-      const stakeText = goal.stake_amount_cents
-        ? `<p class="stake">$${(goal.stake_amount_cents / 100).toFixed(2)} is on the line</p>`
-        : "";
-      const deadlineText = goal.deadline
-        ? `<p class="muted">Due ${new Date(goal.deadline).toLocaleDateString()}</p>`
-        : "";
-      const statusText = goal.is_verified
-        ? "<p>✅ Already confirmed</p>"
-        : "<p>Get the app to confirm they completed this.</p>";
-
-      content.innerHTML = `
-        <h1>${escapeHtml(goal.task_title)}</h1>
-        ${stakeText}
-        ${deadlineText}
-        ${statusText}
-        <a class="app-link" href="${APP_STORE_URL}">Get the MyMainGoals app →</a>
-      `;
-    }
-
-    function escapeHtml(str) {
-      const div = document.createElement("div");
-      div.textContent = str;
-      return div.innerHTML;
-    }
+    // Deliberately shows nothing about the goal — no title, stake, or deadline. Reading
+    // that data now requires a signed-in app session (get_verification has no anon grant),
+    // by design: the person who composed the share message controls who reads it there,
+    // but a bare link with no session attached shouldn't be able to pull anything from the
+    // database at all, even non-sensitive fields.
+    // TODO: swap in the real App Store URL once the app has a live listing.
+    window.location.replace("https://apps.apple.com/app/id0000000000");
   </script>
 </body>
 </html>
