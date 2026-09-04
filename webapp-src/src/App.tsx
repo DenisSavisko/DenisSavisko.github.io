@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { App as KonstaApp, Badge, Fab, Navbar, Page, Tabbar, TabbarLink } from 'konsta/react';
+import { App as KonstaApp, Fab, Navbar, Page } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
 import { useGoals, sortedByTab, type Goal } from './useGoals';
 import { deleteGoal, getCloudKitContainer, markGoalDone } from './cloudkit';
@@ -12,6 +12,7 @@ import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
 import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVerificationSheet';
 import { usePendingAction } from './usePendingAction';
+import { GlassTabbar } from './GlassTabbar';
 import { ChecklistIcon, CheckCircleIcon, PlusIcon, XCircleIcon } from './icons';
 
 type Tab = 'active' | 'done' | 'failed';
@@ -128,7 +129,7 @@ export default function App() {
         <Navbar title={TAB_TITLES[tab]} />
         <AppleSignInButton />
 
-        <div className="pb-28" hidden={tab !== 'active'}>
+        <div className="pb-36" hidden={tab !== 'active'}>
           <ActiveTab
             state={goalsState}
             goals={active}
@@ -138,21 +139,21 @@ export default function App() {
             pendingDeletions={pendingDeletions}
           />
         </div>
-        <div className="pb-28" hidden={tab !== 'done'}>
+        <div className="pb-36" hidden={tab !== 'done'}>
           <DoneTab state={goalsState} goals={done} onDelete={handleDelete} pendingDeletions={pendingDeletions} />
         </div>
-        <div className="pb-28" hidden={tab !== 'failed'}>
+        <div className="pb-36" hidden={tab !== 'failed'}>
           <FailedTab state={goalsState} goals={failed} onDelete={handleDelete} pendingDeletions={pendingDeletions} />
         </div>
 
         {/* Fixed to the viewport (so it doesn't scroll away), but centered/capped to the same
             width as the app itself — otherwise it'd hug the real screen edge on a wide window
             instead of the edge of this phone-shaped column. A plain wrapper div, not a
-            className override on Fab/Tabbar themselves — those ship their own "relative" +
-            decorative absolutely-positioned pseudo-layers (blur backdrop etc.) internally,
-            and fighting that with a conflicting position utility on the same element is what
-            was making them not render like Konsta's real native-style chrome. */}
-        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-10 mx-auto flex max-w-(--k-app-max-w) justify-end pr-4">
+            className override on Fab itself — it ships its own "relative" positioning
+            internally, and fighting that with a conflicting position utility on the same
+            element is what was making the old edge-to-edge Tabbar not render like Konsta's
+            real native-style chrome (see GlassTabbar.tsx for why that's gone now too). */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-32 z-10 mx-auto flex max-w-(--k-app-max-w) justify-end pr-4">
           {/* Fab renders as an <a> by default, which has no native `disabled` — matches
               ContentView's `.disabled(!store.canAddTask)` visually/interactively by hand
               instead. */}
@@ -164,33 +165,20 @@ export default function App() {
           />
         </div>
 
-        <div className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-(--k-app-max-w)">
-          <Tabbar labels>
-            <TabbarLink
-              active={tab === 'active'}
-              onClick={() => setTab('active')}
-              icon={<ChecklistIcon className="h-6 w-6" />}
-              label="Goals"
-            />
-            <TabbarLink
-              active={tab === 'done'}
-              onClick={() => setTab('done')}
-              icon={<CheckCircleIcon className="h-6 w-6" />}
-              label="Done"
-            />
-            <TabbarLink
-              active={tab === 'failed'}
-              onClick={() => setTab('failed')}
-              icon={
-                <span className="relative inline-flex">
-                  <XCircleIcon className="h-6 w-6" />
-                  {failedBadgeCount > 0 && <Badge className="absolute -right-2 -top-1">{failedBadgeCount}</Badge>}
-                </span>
-              }
-              label="Failed"
-            />
-          </Tabbar>
-        </div>
+        <GlassTabbar
+          items={[
+            { id: 'active', label: 'Goals', active: tab === 'active', icon: <ChecklistIcon className="h-6 w-6" />, onClick: () => setTab('active') },
+            { id: 'done', label: 'Done', active: tab === 'done', icon: <CheckCircleIcon className="h-6 w-6" />, onClick: () => setTab('done') },
+            {
+              id: 'failed',
+              label: 'Failed',
+              active: tab === 'failed',
+              icon: <XCircleIcon className="h-6 w-6" />,
+              badge: failedBadgeCount,
+              onClick: () => setTab('failed'),
+            },
+          ]}
+        />
       </Page>
 
       <VerifyModal token={token} authStatus={authState.status} onClose={closeVerifyModal} />

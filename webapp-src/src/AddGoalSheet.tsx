@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, List, ListInput, ListItem, Sheet, Toggle } from 'konsta/react';
+import { List, ListInput, ListItem, Navbar, Preloader, Sheet, Toggle } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
 import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
@@ -29,6 +29,8 @@ export function AddGoalSheet({
   const [requiresVerification, setRequiresVerification] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const isValid = title.trim() !== '' && deadline !== '';
 
   function reset() {
     setTitle('');
@@ -69,10 +71,29 @@ export function AddGoalSheet({
 
   return (
     <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
-      <div className="px-4 pb-10 pt-6">
-        <h2 className="text-center text-lg font-semibold">New Goal</h2>
+      {/* Mirrors AddTaskSheet's toolbar exactly: Cancel top-left (.cancellationAction), "New
+          Goal" centered title, Add top-right (.confirmationAction) swapped for a spinner
+          while busy — not stacked full-width buttons at the bottom. */}
+      <Navbar
+        title="New Goal"
+        left={
+          <button onClick={close} className="px-2 text-primary">
+            Cancel
+          </button>
+        }
+        right={
+          isSaving ? (
+            <Preloader className="mr-2" />
+          ) : (
+            <button onClick={handleCreate} disabled={!isValid} className={`px-2 font-semibold ${isValid ? 'text-primary' : 'text-black/30 dark:text-white/30'}`}>
+              Add
+            </button>
+          )
+        }
+      />
 
-        <List strongIos insetIos className="mt-4">
+      <div className="px-4 pb-10 pt-4">
+        <List strongIos insetIos>
           <ListInput
             label="Title"
             type="text"
@@ -94,14 +115,6 @@ export function AddGoalSheet({
         </List>
 
         {errorMessage && <p className="mt-2 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
-
-        <Button large rounded className="mx-2 mt-4" disabled={isSaving || !title.trim() || !deadline} onClick={handleCreate}>
-          {isSaving ? 'Creating…' : 'Create Goal'}
-        </Button>
-
-        <Button large rounded clear className="mx-2 mt-2" onClick={close}>
-          Cancel
-        </Button>
       </div>
     </Sheet>
   );
