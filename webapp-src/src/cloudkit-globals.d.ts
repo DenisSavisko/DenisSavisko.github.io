@@ -1,6 +1,6 @@
 // CloudKit JS is loaded via a <script> tag (cdn.apple-cloudkit.com), not an npm package —
 // no official type definitions exist, so this is a minimal ambient declaration covering only
-// what goals.ts actually uses.
+// what cloudkit.ts/useGoals.ts/VerifyModal.tsx actually use.
 declare const CloudKit: {
   configure(options: {
     containers: Array<{

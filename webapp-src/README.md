@@ -3,12 +3,33 @@
 Source for `mymaingoals.app/webapp/` — see `WEB_PLAN.md` in the `MyMainGoals` repo
 for the overall design.
 
-The Goals tab (`goals.ts`) is the permanent base view — sign in with your Apple ID via
-CloudKit JS, list your goals and their status, read-only. A `#verify/<token>` hash opens the
-friend-verification confirm flow (`verifyModal.ts`, `verification.ts`, `supabase.ts`) as a
-closable modal *on top of* the Goals tab, the same way `VerifyGoalView` is a sheet over the
-app's main task list on iOS — it never replaces the page. Confirming still requires signing in
-(CloudKit JS, shared with the Goals tab via `cloudkit.ts`'s `ensureCloudKitAuth()`), and if the
+## Stack
+
+React + [Konsta UI](https://konstaui.com) (`theme="ios"`) + Tailwind CSS v4, built with Vite.
+Konsta gives iOS-native-looking primitives (Navbar, Tabbar, List, Sheet, Fab) as Tailwind
+classes — chosen specifically to get close to the real iOS app's look without hand-rolling
+every UIKit convention. No React Router — the whole app is one page, `App.tsx`, switching
+between three tabs with local state and reading `#verify/<token>` out of the URL hash directly.
+
+## Structure — mirrors ContentView.swift on iOS
+
+`App.tsx` renders the same 3-tab shell as `ContentView`: **Goals** (`ActiveTab.tsx`, mirrors
+`ActiveListView`), **Done** (`DoneTab.tsx`, mirrors `DoneListView`, grouped by month), **Failed**
+(`FailedTab.tsx`, mirrors `FailedListView`, grouped by month, tab badge = pending-release count).
+All three read from one shared `useGoals()` hook (CloudKit JS query, filtered/sorted exactly
+like `TaskStore.activeTasks`/`doneTasks`/`failedTasks`). Sign in with your Apple ID via CloudKit
+JS to see your goals — one shared button in the navbar (`AppleSignInButton.tsx`), not
+per-tab, since CloudKit JS only supports one such element on the page (see its comment).
+
+**Read-only, and no goal creation yet** — the floating `+` button (mirrors `ContentView`'s Fab)
+opens a "coming soon" sheet instead of a real add-goal flow; toggling done, swipe-to-delete,
+and staking/payments would all be real CloudKit/Supabase writes, a bigger separate effort not
+built here. This is a structural-parity pass on the read side, not full feature parity.
+
+A `#verify/<token>` hash opens the friend-verification confirm flow (`VerifyModal.tsx`,
+`verification.ts`, `supabase.ts`) as a closable bottom sheet *on top of* the Goals tab, the same
+way `VerifyGoalView` is a sheet over the app's main task list on iOS — it never replaces the
+page. Confirming still requires signing in (the same shared CloudKit session), and if the
 signed-in person's own synced goals include that verification code, it blocks with "this is
 your own goal" instead of showing Confirm — mirrors `VerifyGoalView.matchingLocalTask` on iOS,
 backed by a real CloudKit query instead of a local device store.
@@ -32,8 +53,9 @@ changes).
    and field names for goals, and fix `cloudkitConfig.ts` if they don't match. This repo
    currently assumes SwiftData's known Core-Data-style naming convention (`CD_` prefix over
    the `@Model` class/property names in `MyMainGoals/GoalTask.swift`) —
-   `CD_GoalTask` / `CD_title` / `CD_deadline` / `CD_isDone` — but that's inferred, not
-   confirmed against this project's actual dashboard.
+   `CD_GoalTask` and its fields (see `GOAL_FIELDS` in `cloudkitConfig.ts`) — the record type
+   itself and the `CD_` pattern are confirmed against the actual dashboard, but not every
+   individual field.
 4. **Queryable index**: SwiftData/Core Data records synced to CloudKit are often not
    queryable by default — CloudKit requires an explicit Queryable index on a field (commonly
    `recordName`) before `performQuery({ recordType: ... })` returns anything. If the Goals

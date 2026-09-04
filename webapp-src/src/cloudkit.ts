@@ -1,10 +1,9 @@
 import { CLOUDKIT_API_TOKEN, CLOUDKIT_CONTAINER_ID, CLOUDKIT_ENVIRONMENT, GOAL_FIELDS, GOAL_RECORD_TYPE } from './cloudkitConfig';
 
 let container: CKContainer | null = null;
-let authPromise: Promise<CKUserIdentity | null> | null = null;
 
-/// Configuring twice throws, so this is idempotent — both the verify modal and the Goals tab
-/// share one CloudKit session underneath.
+/// Configuring twice throws, so this is idempotent — every part of the app that needs
+/// CloudKit shares this one container/session.
 export function getCloudKitContainer(): CKContainer {
   if (!container) {
     CloudKit.configure({
@@ -23,31 +22,6 @@ export function getCloudKitContainer(): CKContainer {
 
 export function isCloudKitConfigured(): boolean {
   return !CLOUDKIT_API_TOKEN.startsWith('REPLACE_');
-}
-
-/// setUpAuth() injects into #apple-sign-in-button as a side effect and isn't meant to be
-/// called more than once per container — the Goals tab and the verify modal both need the
-/// resulting sign-in state, so they share this one call instead of each making their own.
-export function ensureCloudKitAuth(): Promise<CKUserIdentity | null> {
-  if (!authPromise) {
-    authPromise = getCloudKitContainer().setUpAuth();
-  }
-  return authPromise;
-}
-
-/// CloudKit JS only supports one #apple-sign-in-button element on the page (it looks it up
-/// by that fixed id), so there's exactly one such node, created once by the Goals tab. The
-/// verify modal borrows it — moving the same DOM node preserves whatever CloudKit JS attached
-/// to it — and this returns a callback that puts it back where it came from on modal close.
-export function relocateSignInButton(target: HTMLElement): () => void {
-  const el = document.getElementById('apple-sign-in-button');
-  if (!el) return () => {};
-  const originalParent = el.parentElement;
-  const originalNext = el.nextSibling;
-  target.appendChild(el);
-  return () => {
-    if (originalParent) originalParent.insertBefore(el, originalNext);
-  };
 }
 
 /// Mirrors VerifyGoalView.matchingLocalTask on iOS, which checks the device's local SwiftData

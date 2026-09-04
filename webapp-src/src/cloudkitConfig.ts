@@ -22,5 +22,10 @@ export const GOAL_FIELDS = {
   title: 'CD_title',
   deadline: 'CD_deadline',
   isDone: 'CD_isDone',
+  completedDate: 'CD_completedDate',
+  stakeAmountCents: 'CD_stakeAmountCents',
+  stakeStatus: 'CD_stakeStatus',
+  requiresVerification: 'CD_requiresVerification',
+  isVerified: 'CD_isVerified',
   verificationCode: 'CD_verificationCode',
 } as const;
