@@ -62,16 +62,18 @@ export async function markGoalDone(
   container: CKContainer,
   goal: { recordName: string; recordChangeTag: string }
 ): Promise<void> {
-  const response = await container.privateCloudDatabase.saveRecord(
-    {
-      recordType: GOAL_RECORD_TYPE,
-      recordName: goal.recordName,
-      recordChangeTag: goal.recordChangeTag,
-      fields: {
-        [GOAL_FIELDS.isDone]: { value: 1 },
-        [GOAL_FIELDS.completedDate]: { value: Date.now() },
+  const response = await container.privateCloudDatabase.saveRecords(
+    [
+      {
+        recordType: GOAL_RECORD_TYPE,
+        recordName: goal.recordName,
+        recordChangeTag: goal.recordChangeTag,
+        fields: {
+          [GOAL_FIELDS.isDone]: { value: 1 },
+          [GOAL_FIELDS.completedDate]: { value: Date.now() },
+        },
       },
-    },
+    ],
     zoneOptions()
   );
   if (response.hasErrors) {
@@ -81,7 +83,7 @@ export async function markGoalDone(
 
 /// Mirrors TaskStore.delete.
 export async function deleteGoal(container: CKContainer, recordName: string): Promise<void> {
-  const response = await container.privateCloudDatabase.deleteRecord(recordName, zoneOptions());
+  const response = await container.privateCloudDatabase.deleteRecords([recordName], zoneOptions());
   if (response.hasErrors) {
     throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
   }
@@ -114,8 +116,8 @@ export async function createGoal(
   if (params.verificationCode) {
     fields[GOAL_FIELDS.verificationCode] = { value: params.verificationCode };
   }
-  const response = await container.privateCloudDatabase.saveRecord(
-    { recordType: GOAL_RECORD_TYPE, fields },
+  const response = await container.privateCloudDatabase.saveRecords(
+    [{ recordType: GOAL_RECORD_TYPE, fields }],
     zoneOptions()
   );
   if (response.hasErrors) {

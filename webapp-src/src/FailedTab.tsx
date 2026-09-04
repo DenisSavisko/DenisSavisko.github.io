@@ -1,13 +1,27 @@
 import { ListItem } from 'konsta/react';
 import { GoalListPage } from './GoalListPage';
+import { PendingDeleteRow } from './PendingDeleteRow';
 import { XCircleIcon, TrashIcon } from './icons';
 import { formatDeadline } from './useGoals';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
+import type { usePendingAction } from './usePendingAction';
+
+type PendingAction = ReturnType<typeof usePendingAction>;
 
 /// Mirrors FailedListView on iOS — grouped by deadline month, most recent first. No
 /// ad-watching-to-release flow here (that's AdMob, iOS-only) — this is read/delete only.
-export function FailedTab({ state, goals, onDelete }: { state: GoalsState; goals: Goal[]; onDelete: (goal: Goal) => void }) {
+export function FailedTab({
+  state,
+  goals,
+  onDelete,
+  pendingDeletions,
+}: {
+  state: GoalsState;
+  goals: Goal[];
+  onDelete: (goal: Goal) => void;
+  pendingDeletions: PendingAction;
+}) {
   return (
     <GoalListPage
       status={state.status}
@@ -17,7 +31,19 @@ export function FailedTab({ state, goals, onDelete }: { state: GoalsState; goals
       emptyTitle="No Failed Goals"
       emptyText="Goals you miss the deadline on will show up here."
       groupDateOf={(goal) => goal.deadline}
-      renderRow={(goal) => <FailedRow key={goal.id} goal={goal} onDelete={onDelete} />}
+      renderRow={(goal) =>
+        pendingDeletions.isPending(goal.id) ? (
+          <PendingDeleteRow
+            key={goal.id}
+            title={goal.title}
+            startedAt={pendingDeletions.startedAt(goal.id)!}
+            delayMs={pendingDeletions.delayMs}
+            onUndo={() => pendingDeletions.cancel(goal.id)}
+          />
+        ) : (
+          <FailedRow key={goal.id} goal={goal} onDelete={onDelete} />
+        )
+      }
     />
   );
 }

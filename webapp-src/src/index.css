@@ -12,3 +12,20 @@
 body {
   background: #e5e5ea;
 }
+
+/* Countdown bar for pending mark-done/delete (usePendingAction) — mirrors iOS's
+   ProgressView(timerInterval:countsDown:). Duration is set inline per use (--pending-delay),
+   since it must match usePendingAction's actual delayMs. */
+@keyframes pending-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+.pending-countdown-bar {
+  transform-origin: left;
+  animation: pending-countdown linear forwards;
+  animation-duration: var(--pending-delay, 2000ms);
+}

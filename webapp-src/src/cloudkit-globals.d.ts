@@ -59,6 +59,16 @@ interface CKDatabase {
   /// zone ("com.apple.coredata.cloudkit.zone", see CORE_DATA_ZONE_ID), and silently returns
   /// nothing instead of erroring.
   performQuery(query: { recordType: string }, options?: { zoneID?: CKZoneID }): Promise<CKQueryResponse>;
-  saveRecord(record: { recordType: string; recordName?: string; recordChangeTag?: string; fields: CKRecordFields }, options?: { zoneID?: CKZoneID }): Promise<CKSaveResponse>;
-  deleteRecord(recordName: string, options?: { zoneID?: CKZoneID }): Promise<CKSaveResponse>;
+  /// Plural, batch-based — there is no singular saveRecord/deleteRecord in this CloudKit JS
+  /// version (v2, cdn.apple-cloudkit.com/ck/2/). Confirmed against the actual served
+  /// cloudkit.js source: these dispatch through RecordsBatchBuilder#createOrUpdate/
+  /// #forceDelete under the hood. Each item may be a plain record object (save) or a bare
+  /// recordName string (delete) — normalizeRecords wraps single items into a one-element
+  /// array either way, so passing a single item (not wrapped in []) also works, but arrays
+  /// are used here for clarity given the plural name.
+  saveRecords(
+    records: Array<{ recordType: string; recordName?: string; recordChangeTag?: string; fields: CKRecordFields }>,
+    options?: { zoneID?: CKZoneID }
+  ): Promise<CKSaveResponse>;
+  deleteRecords(recordNames: string[], options?: { zoneID?: CKZoneID }): Promise<CKSaveResponse>;
 }

@@ -5,21 +5,21 @@ import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
 import type { ShareVerificationTarget } from './ShareVerificationSheet';
 
-const MAX_ACTIVE_TASKS = 3; // mirrors TaskStore.maxActiveTasks
-
 /// Mirrors AddTaskSheet on iOS, minus staking — creating a *staked* goal means collecting a
 /// real payment method and calling create-hold (Stripe), a materially bigger, separate
 /// integration (Apple Pay JS / Stripe Elements) not built here. Unstaked goal creation is a
 /// plain CloudKit write, safe to do the same way iOS does it.
+///
+/// The 3-active-goals cap is enforced by disabling the Fab itself (App.tsx), same as
+/// ContentView's `.disabled(!store.canAddTask)` — this sheet doesn't need its own check,
+/// since it can't open in that state to begin with.
 export function AddGoalSheet({
   opened,
-  activeCount,
   onClose,
   onCreated,
   onNeedsShare,
 }: {
   opened: boolean;
-  activeCount: number;
   onClose: () => void;
   onCreated: () => void;
   onNeedsShare: (target: ShareVerificationTarget) => void;
@@ -29,8 +29,6 @@ export function AddGoalSheet({
   const [requiresVerification, setRequiresVerification] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-
-  const canAddTask = activeCount < MAX_ACTIVE_TASKS;
 
   function reset() {
     setTitle('');
@@ -74,46 +72,32 @@ export function AddGoalSheet({
       <div className="px-4 pb-10 pt-6">
         <h2 className="text-center text-lg font-semibold">New Goal</h2>
 
-        {!canAddTask ? (
-          <p className="mt-4 px-2 text-center text-sm text-ios-secondary dark:text-ios-secondary-dark">
-            You already have {MAX_ACTIVE_TASKS} active goals — finish or fail one before adding another.
-          </p>
-        ) : (
-          <>
-            <List strongIos insetIos className="mt-4">
-              <ListInput
-                label="Title"
-                type="text"
-                placeholder="What do you want to do?"
-                value={title}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-              />
-              <ListInput
-                label="Deadline"
-                type="datetime-local"
-                value={deadline}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeadline(e.target.value)}
-              />
-              <ListItem
-                label
-                title="Require confirmation from someone else"
-                after={<Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />}
-              />
-            </List>
+        <List strongIos insetIos className="mt-4">
+          <ListInput
+            label="Title"
+            type="text"
+            placeholder="What do you want to do?"
+            value={title}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+          />
+          <ListInput
+            label="Deadline"
+            type="datetime-local"
+            value={deadline}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeadline(e.target.value)}
+          />
+          <ListItem
+            label
+            title="Require confirmation from someone else"
+            after={<Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />}
+          />
+        </List>
 
-            {errorMessage && <p className="mt-2 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
+        {errorMessage && <p className="mt-2 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
 
-            <Button
-              large
-              rounded
-              className="mx-2 mt-4"
-              disabled={isSaving || !title.trim() || !deadline}
-              onClick={handleCreate}
-            >
-              {isSaving ? 'Creating…' : 'Create Goal'}
-            </Button>
-          </>
-        )}
+        <Button large rounded className="mx-2 mt-4" disabled={isSaving || !title.trim() || !deadline} onClick={handleCreate}>
+          {isSaving ? 'Creating…' : 'Create Goal'}
+        </Button>
 
         <Button large rounded clear className="mx-2 mt-2" onClick={close}>
           Cancel

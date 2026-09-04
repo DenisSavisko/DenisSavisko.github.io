@@ -1,12 +1,26 @@
 import { ListItem } from 'konsta/react';
 import { GoalListPage } from './GoalListPage';
+import { PendingDeleteRow } from './PendingDeleteRow';
 import { CheckCircleIcon, TrashIcon } from './icons';
 import { formatDeadline } from './useGoals';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
+import type { usePendingAction } from './usePendingAction';
+
+type PendingAction = ReturnType<typeof usePendingAction>;
 
 /// Mirrors DoneListView on iOS — grouped by completion month, most recent first.
-export function DoneTab({ state, goals, onDelete }: { state: GoalsState; goals: Goal[]; onDelete: (goal: Goal) => void }) {
+export function DoneTab({
+  state,
+  goals,
+  onDelete,
+  pendingDeletions,
+}: {
+  state: GoalsState;
+  goals: Goal[];
+  onDelete: (goal: Goal) => void;
+  pendingDeletions: PendingAction;
+}) {
   return (
     <GoalListPage
       status={state.status}
@@ -16,7 +30,19 @@ export function DoneTab({ state, goals, onDelete }: { state: GoalsState; goals: 
       emptyTitle="No Completed Goals"
       emptyText="Goals you finish will show up here."
       groupDateOf={(goal) => goal.completedDate ?? goal.deadline}
-      renderRow={(goal) => <DoneRow key={goal.id} goal={goal} onDelete={onDelete} />}
+      renderRow={(goal) =>
+        pendingDeletions.isPending(goal.id) ? (
+          <PendingDeleteRow
+            key={goal.id}
+            title={goal.title}
+            startedAt={pendingDeletions.startedAt(goal.id)!}
+            delayMs={pendingDeletions.delayMs}
+            onUndo={() => pendingDeletions.cancel(goal.id)}
+          />
+        ) : (
+          <DoneRow key={goal.id} goal={goal} onDelete={onDelete} />
+        )
+      }
     />
   );
 }
