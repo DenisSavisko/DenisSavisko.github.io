@@ -1,5 +1,5 @@
 import { GOAL_FIELDS, GOAL_RECORD_TYPE } from './cloudkitConfig';
-import { getCloudKitContainer, isCloudKitConfigured } from './cloudkit';
+import { ensureCloudKitAuth, getCloudKitContainer, isCloudKitConfigured } from './cloudkit';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -72,11 +72,10 @@ async function loadGoals(content: HTMLDivElement, container: CKContainer) {
 }
 
 export async function initGoalsView() {
-  document.body.classList.add('goals');
-
-  // The sign-in/out button is a live DOM node CloudKit JS injects into and manages itself
-  // (via setUpAuth()) — rendered once here and never touched again, unlike `content` below
-  // which is freely re-rendered as loading/list/error state changes.
+  // The permanent base view — a verify link opens as a modal on top of this (see
+  // verifyModal.ts), it never replaces it. The sign-in/out button is a live DOM node CloudKit
+  // JS injects into and manages itself; created once here, it may later be borrowed by the
+  // verify modal (relocateSignInButton) but always ends up back in this same spot.
   app.innerHTML = `
     <h1>Goals</h1>
     <div id="apple-sign-in-button"></div>
@@ -96,7 +95,7 @@ export async function initGoalsView() {
     content.innerHTML = '<p class="muted">Sign in to see your goals.</p>';
   });
 
-  const userIdentity = await container.setUpAuth();
+  const userIdentity = await ensureCloudKitAuth();
   if (userIdentity) {
     await loadGoals(content, container);
   } else {

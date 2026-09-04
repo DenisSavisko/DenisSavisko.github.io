@@ -1,14 +1,23 @@
 # webapp-src
 
 Source for `mymaingoals.app/webapp/` — see `WEB_PLAN.md` in the `MyMainGoals` repo
-for the overall design. Two views, switched by URL hash (no server routing needed):
+for the overall design.
 
-- `#verify/<token>` — friend-verification confirm flow (`verification.ts`, `supabase.ts`).
-  Fully working today, no manual setup needed beyond what's already committed.
-- anything else (default) — proof-of-concept "Goals" tab: sign in with your Apple ID via
-  CloudKit JS, list your goals and their status, read-only (`goals.ts`, `cloudkitConfig.ts`).
-  **Not working yet** — needs the manual steps below, which only the Apple Developer account
-  holder can do (no CLI/API access to CloudKit Dashboard).
+The Goals tab (`goals.ts`) is the permanent base view — sign in with your Apple ID via
+CloudKit JS, list your goals and their status, read-only. A `#verify/<token>` hash opens the
+friend-verification confirm flow (`verifyModal.ts`, `verification.ts`, `supabase.ts`) as a
+closable modal *on top of* the Goals tab, the same way `VerifyGoalView` is a sheet over the
+app's main task list on iOS — it never replaces the page. Confirming still requires signing in
+(CloudKit JS, shared with the Goals tab via `cloudkit.ts`'s `ensureCloudKitAuth()`), and if the
+signed-in person's own synced goals include that verification code, it blocks with "this is
+your own goal" instead of showing Confirm — mirrors `VerifyGoalView.matchingLocalTask` on iOS,
+backed by a real CloudKit query instead of a local device store.
+
+The manual CloudKit Dashboard steps below (API token, schema check, queryable index) are done
+as of this writing — `cloudkitConfig.ts` has a real token and `CD_GoalTask`/`recordName` are
+confirmed against the actual Development schema. Revisit this section if either the Goals tab
+or the self-confirm check start failing again (e.g. after rotating the token, or if the schema
+changes).
 
 ## CloudKit JS setup (required before the Goals tab works)
 

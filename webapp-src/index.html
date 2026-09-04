@@ -10,14 +10,13 @@
   :root { color-scheme: light; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    max-width: 480px;
-    margin: 80px auto;
+    max-width: 600px;
+    margin: 60px auto;
     padding: 0 20px;
     color: #1a1a1a;
     line-height: 1.6;
-    text-align: center;
   }
-  h1 { font-size: 20px; margin-bottom: 4px; }
+  h1 { font-size: 20px; margin-bottom: 4px; text-align: center; }
   p.muted { color: #666; font-size: 14px; }
   p.stake { font-size: 15px; margin: 4px 0; }
   p.deadline { font-size: 13px; color: #666; }
@@ -36,9 +35,8 @@
   button:disabled { opacity: 0.6; cursor: default; }
   p.error { color: #d64545; font-size: 14px; }
 
-  /* Goals tab — wider, left-aligned list, unlike the centered verify-flow layout above. */
-  body.goals { max-width: 600px; text-align: left; }
-  body.goals h1 { text-align: center; }
+  /// Goals tab (the permanent base view — everything else, like the verify flow, is a modal
+  /// on top of it, same as VerifyGoalView being a sheet over the app's main task list on iOS).
   #apple-sign-in-button { display: flex; justify-content: center; margin-top: 32px; }
   ul.goal-list { list-style: none; padding: 0; margin: 24px 0 0; }
   li.goal-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid #eee; }
@@ -48,6 +46,21 @@
   span.status-active { background: #e6f0ff; color: #2a5ad1; }
   span.status-done { background: #e3f8e9; color: #1f9d55; }
   span.status-failed { background: #fdeaea; color: #d64545; }
+
+  /* Verify modal — a closable sheet over the Goals tab, not a separate dead-end page. */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45);
+    display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1000;
+  }
+  .modal-card {
+    background: white; border-radius: 16px; padding: 28px 24px; max-width: 380px; width: 100%;
+    text-align: center; position: relative; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  }
+  .modal-close {
+    position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; margin: 0;
+    padding: 0; border-radius: 50%; background: #f0f0f0; color: #666; font-size: 18px;
+    line-height: 1; font-weight: 400;
+  }
 </style>
 </head>
 <body>
