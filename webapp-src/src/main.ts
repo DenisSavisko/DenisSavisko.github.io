@@ -1,5 +1,6 @@
 import { ensureSignedIn } from './supabase';
 import { confirmVerification, getVerification, type VerificationInfo } from './verification';
+import { initGoalsView } from './goals';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -21,13 +22,6 @@ function formatDeadline(iso: string): string {
     hour: 'numeric',
     minute: '2-digit',
   });
-}
-
-function renderMissingToken() {
-  app.innerHTML = `
-    <h1>MyMainGoals</h1>
-    <p class="muted">Open this page from a MyMainGoals verification link.</p>
-  `;
 }
 
 function renderNotFound() {
@@ -87,7 +81,7 @@ function escapeHtml(text: string): string {
 async function main() {
   const token = parseToken();
   if (!token) {
-    renderMissingToken();
+    await initGoalsView();
     return;
   }
 
