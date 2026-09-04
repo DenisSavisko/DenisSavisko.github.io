@@ -3,7 +3,7 @@
 // MyMainGoals/MyMainGoals.entitlements) — see webapp-src/README.md for the manual
 // dashboard steps this depends on, none of which can be done from code.
 export const CLOUDKIT_CONTAINER_ID = 'iCloud.com.denyssavisko.MyMainGoals';
-export const CLOUDKIT_API_TOKEN = 'REPLACE_WITH_WEB_SERVICES_API_TOKEN';
+export const CLOUDKIT_API_TOKEN = '6170c2315a12bafdbf085d41a7aba4be1c2ff12d1689c7e5563ce8a9c12b97b9';
 
 // The app hasn't shipped (no App Store listing yet), so on-device data today lives in
 // CloudKit's Development environment, not Production — switch this once the app ships and
