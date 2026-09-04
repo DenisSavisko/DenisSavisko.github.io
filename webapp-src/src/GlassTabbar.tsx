@@ -24,7 +24,7 @@ export function GlassTabbar({ items }: { items: GlassTabbarItem[] }) {
           <button
             key={item.id}
             onClick={item.onClick}
-            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-full px-4 py-2 text-[11px] font-medium transition-colors ${
+            className={`flex flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl px-5 py-2 text-[11px] font-medium transition-colors ${
               item.active ? 'bg-primary/15 text-primary' : 'text-black/60 dark:text-white/60'
             }`}
           >

@@ -1,9 +1,22 @@
-import { useState } from 'react';
-import { List, ListInput, ListItem, Navbar, Preloader, Sheet, Toggle } from 'konsta/react';
+import { useMemo, useState } from 'react';
+import { List, ListInput, ListItem, Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
 import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
+import { formatDeadline } from './useGoals';
 import type { ShareVerificationTarget } from './ShareVerificationSheet';
+
+/// Mirrors AddTaskSheet's DeadlineOption exactly: a small set of relative offsets, not a
+/// precise date/time picker — goals are a rough estimate, not a reminder (see that enum's own
+/// comment). Skips the debug-only "1 minute" option: there's no debug-vs-release build
+/// concept for a deployed website, and this is otherwise the production option set.
+const DEADLINE_OPTIONS = [
+  { id: '1h', label: '1h', ms: 60 * 60 * 1000 },
+  { id: '1d', label: '1d', ms: 24 * 60 * 60 * 1000 },
+  { id: '3d', label: '3d', ms: 3 * 24 * 60 * 60 * 1000 },
+  { id: '5d', label: '5d', ms: 5 * 24 * 60 * 60 * 1000 },
+] as const;
+type DeadlineOptionId = (typeof DEADLINE_OPTIONS)[number]['id'];
 
 /// Mirrors AddTaskSheet on iOS, minus staking — creating a *staked* goal means collecting a
 /// real payment method and calling create-hold (Stripe), a materially bigger, separate
@@ -25,16 +38,25 @@ export function AddGoalSheet({
   onNeedsShare: (target: ShareVerificationTarget) => void;
 }) {
   const [title, setTitle] = useState('');
-  const [deadline, setDeadline] = useState('');
+  const [deadlineOptionId, setDeadlineOptionId] = useState<DeadlineOptionId>('1d'); // matches selectedDeadlineOption's default of .oneDay
   const [requiresVerification, setRequiresVerification] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const isValid = title.trim() !== '' && deadline !== '';
+  // Recomputed on every render rather than fixed at selection time — same effect as iOS's
+  // `deadline = Date().addingTimeInterval(newValue.interval)` firing fresh each time the
+  // option changes, since the sheet's open duration is short enough that "now" barely drifts.
+  const deadline = useMemo(() => {
+    const option = DEADLINE_OPTIONS.find((o) => o.id === deadlineOptionId)!;
+    return new Date(Date.now() + option.ms);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deadlineOptionId]);
+
+  const isValid = title.trim() !== '';
 
   function reset() {
     setTitle('');
-    setDeadline('');
+    setDeadlineOptionId('1d');
     setRequiresVerification(false);
     setErrorMessage(null);
   }
@@ -46,20 +68,18 @@ export function AddGoalSheet({
 
   async function handleCreate() {
     const trimmedTitle = title.trim();
-    if (!trimmedTitle || !deadline) return;
-    const deadlineDate = new Date(deadline);
-    if (Number.isNaN(deadlineDate.getTime())) return;
+    if (!trimmedTitle) return;
 
     setIsSaving(true);
     setErrorMessage(null);
     try {
       await ensureSignedIn();
-      const token = requiresVerification ? await createVerification(trimmedTitle, null, deadlineDate) : null;
+      const token = requiresVerification ? await createVerification(trimmedTitle, null, deadline) : null;
       const container = getCloudKitContainer();
-      await createGoal(container, { title: trimmedTitle, deadline: deadlineDate, verificationCode: token });
+      await createGoal(container, { title: trimmedTitle, deadline, verificationCode: token });
       onCreated();
       if (token) {
-        onNeedsShare({ title: trimmedTitle, deadline: deadlineDate, stakeAmountCents: null, token });
+        onNeedsShare({ title: trimmedTitle, deadline, stakeAmountCents: null, token });
       }
       close();
     } catch (error) {
@@ -101,12 +121,6 @@ export function AddGoalSheet({
             value={title}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
           />
-          <ListInput
-            label="Deadline"
-            type="datetime-local"
-            value={deadline}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeadline(e.target.value)}
-          />
           <ListItem
             label
             title="Require confirmation from someone else"
@@ -114,7 +128,19 @@ export function AddGoalSheet({
           />
         </List>
 
-        {errorMessage && <p className="mt-2 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
+        {/* Mirrors AddTaskSheet's Section("Deadline") — a segmented control of relative
+            offsets, not a date/time picker. */}
+        <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Deadline</p>
+        <Segmented strong>
+          {DEADLINE_OPTIONS.map((option) => (
+            <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
+              {option.label}
+            </SegmentedButton>
+          ))}
+        </Segmented>
+        <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">Due around {formatDeadline(deadline)}</p>
+
+        {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
       </div>
     </Sheet>
   );

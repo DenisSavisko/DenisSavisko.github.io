@@ -13,6 +13,24 @@ body {
   background: #e5e5ea;
 }
 
+/* Plain <button> has no default pointer cursor in browsers (unlike <a href>) — Konsta's own
+   button-shaped components (Fab, ListItem as a link, etc.) and every hand-rolled one here
+   (mark-done circle, delete trash icon, tab bar, sheet Cancel/Add) are <button>s, so without
+   this every clickable control looks inert on desktop. */
+button:not(:disabled) {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+/* Konsta's own interactive components (Fab, a ListItem used as a link/button, etc.) render
+   as <a> with no href when used as a JS-driven action rather than real navigation — browsers
+   only give <a> a pointer cursor when it has an href, so these read as inert without this. A
+   real navigational link always has an href, so this is a safe, broad rule. */
+a:not([href]) {
+  cursor: pointer;
+}
+
 /* Countdown bar for pending mark-done/delete (usePendingAction) — mirrors iOS's
    ProgressView(timerInterval:countsDown:). Duration is set inline per use (--pending-delay),
    since it must match usePendingAction's actual delayMs. */
