@@ -16,11 +16,25 @@
   meta.content = 'app-id=0000000000, app-argument=' + window.location.href;
   document.head.appendChild(meta);
 </script>
+<script>
+  // /webapp is a separate, isolated static app (see webapp-src/) that can show the full
+  // title/stake/deadline and confirm on the web — it establishes its own anonymous Supabase
+  // session client-side rather than relying on one already existing here. Hash fragment, not
+  // a path, so no server-side routing is needed for it.
+  document.addEventListener('DOMContentLoaded', function () {
+    var match = /^\/verify\/(.+)$/.exec(window.location.pathname);
+    if (!match) return;
+    var link = document.getElementById('web-link');
+    link.href = '/webapp/#verify/' + match[1];
+    link.hidden = false;
+  });
+</script>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 80px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.6; text-align: center; }
   h1 { font-size: 20px; margin-bottom: 8px; }
   p.muted { color: #666; font-size: 14px; }
   a.app-link { display: inline-block; margin-top: 24px; padding: 14px 28px; border-radius: 12px; background: #d64545; color: white; text-decoration: none; font-weight: 600; }
+  a.web-link { display: block; margin-top: 16px; font-size: 14px; color: #666; }
 </style>
 </head>
 <body>
@@ -34,10 +48,12 @@
     data now requires a signed-in app session (get_verification has no anon grant): the
     person who composed the share message controls who reads it there, but a bare link
     with no session attached shouldn't be able to pull anything from the database, even
-    non-sensitive fields.
+    non-sensitive fields. The "try the web version" link below opts into that instead, on a
+    separate page that establishes its own session before reading anything.
   -->
   <h1>Get MyMainGoals</h1>
   <p class="muted">Install the app to see what you were asked to confirm.</p>
   <a class="app-link" href="https://apps.apple.com/app/id0000000000">Get the app →</a>
+  <a class="web-link" id="web-link" href="#" hidden>or try the web version</a>
 </body>
 </html>
