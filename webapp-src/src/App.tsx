@@ -140,10 +140,18 @@ export default function App() {
         <AppleSignInButton />
 
         {!isSignedIn ? (
-          // Nothing else is usable while signed out — no tabs, no creating goals — there's
-          // only one thing to do here, which is sign in with the one button above.
+          // Nothing else is usable while signed out — no tabs, no creating goals, and (see
+          // the VerifyModal below) no goal details either — there's only one thing to do
+          // here, which is sign in with the one button above. The #verify/<token> hash is
+          // left untouched the whole time it's up to VerifyModal's onClose to ever clear it,
+          // never just because sign-in hasn't happened yet — so the moment sign-in completes,
+          // the still-present token opens the confirm sheet automatically.
           <Block strong inset className="mt-10 text-center text-ios-secondary dark:text-ios-secondary-dark">
-            {authState.status === 'loading' ? 'Loading…' : 'Sign in with your Apple ID (above) to use MyMainGoals.'}
+            {authState.status === 'loading'
+              ? 'Loading…'
+              : token
+                ? 'Sign in with your Apple ID (above) to continue.'
+                : 'Sign in with your Apple ID (above) to use MyMainGoals.'}
           </Block>
         ) : (
           <>
@@ -211,7 +219,11 @@ export default function App() {
         )}
       </Page>
 
-      <VerifyModal token={token} authStatus={authState.status} onClose={closeVerifyModal} />
+      {/* Stays closed — showing nothing, not even the goal's title — until signed in, same as
+          the rest of the app. Passing null (rather than some other "closed" signal) while
+          signed out means it opens itself automatically the moment isSignedIn flips true, as
+          long as the hash hasn't been cleared out from under it in the meantime. */}
+      <VerifyModal token={isSignedIn ? token : null} authStatus={authState.status} onClose={closeVerifyModal} />
 
       <AddGoalSheet opened={isAddSheetOpen} onClose={() => setIsAddSheetOpen(false)} onCreated={reloadGoals} />
 
