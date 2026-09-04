@@ -64,7 +64,12 @@ export function useGoals(authStatus: CloudKitAuthState['status']): [GoalsState, 
       return;
     }
     let cancelled = false;
-    setState({ status: 'loading' });
+    // Stale-while-revalidate: only show the loading placeholder on the very first load. A
+    // background refresh (focus refetch, the 20s poll) keeps last-known-good data on screen
+    // — replacing the whole list with a loading spinner every 20s made the list feel broken,
+    // and CloudKit JS is a real network round trip each time (unlike iOS's fetchTasks(), a
+    // synchronous local read with nothing to show a spinner for in the first place).
+    setState((prev) => (prev.status === 'loaded' ? prev : { status: 'loading' }));
     (async () => {
       try {
         const container = getCloudKitContainer();
@@ -77,7 +82,11 @@ export function useGoals(authStatus: CloudKitAuthState['status']): [GoalsState, 
         }
         if (!cancelled) setState({ status: 'loaded', goals: response.records.map(mapRecord) });
       } catch (error) {
-        if (!cancelled) setState({ status: 'error', message: (error as Error).message });
+        // A failed background refresh keeps showing the last-known-good list rather than
+        // replacing it with an error screen — only a first-load failure does that.
+        if (!cancelled) {
+          setState((prev) => (prev.status === 'loaded' ? prev : { status: 'error', message: (error as Error).message }));
+        }
       }
     })();
     return () => {
