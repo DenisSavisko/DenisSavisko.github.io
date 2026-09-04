@@ -167,13 +167,13 @@ export default function App() {
 
         <GlassTabbar
           items={[
-            { id: 'active', label: 'Goals', active: tab === 'active', icon: <ChecklistIcon className="h-6 w-6" />, onClick: () => setTab('active') },
-            { id: 'done', label: 'Done', active: tab === 'done', icon: <CheckCircleIcon className="h-6 w-6" />, onClick: () => setTab('done') },
+            { id: 'active', label: 'Goals', active: tab === 'active', icon: <ChecklistIcon className="h-4 w-4" />, onClick: () => setTab('active') },
+            { id: 'done', label: 'Done', active: tab === 'done', icon: <CheckCircleIcon className="h-4 w-4" />, onClick: () => setTab('done') },
             {
               id: 'failed',
               label: 'Failed',
               active: tab === 'failed',
-              icon: <XCircleIcon className="h-6 w-6" />,
+              icon: <XCircleIcon className="h-4 w-4" />,
               badge: failedBadgeCount,
               onClick: () => setTab('failed'),
             },
