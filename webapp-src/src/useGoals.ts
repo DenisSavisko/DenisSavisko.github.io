@@ -85,6 +85,31 @@ export function useGoals(authStatus: CloudKitAuthState['status']): [GoalsState, 
     };
   }, [authStatus, reloadToken]);
 
+  // CloudKit JS has no subscription/push channel for browsers (that's iOS/macOS-only), so
+  // there's no way to be told a goal changed elsewhere (the iOS app, another tab) — refetch
+  // on tab focus catches the common "switched away and back" case cheaply.
+  useEffect(() => {
+    if (authStatus !== 'signed-in') return;
+    const onFocus = () => {
+      if (document.visibilityState === 'visible') reload();
+    };
+    document.addEventListener('visibilitychange', onFocus);
+    window.addEventListener('focus', onFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [authStatus, reload]);
+
+  // Polling fallback for changes made elsewhere while this tab stays focused and visible the
+  // whole time (so focus/visibilitychange never fires) — same 15-30s range as iOS's refresh
+  // timer, same underlying gap (no push channel) on both platforms.
+  useEffect(() => {
+    if (authStatus !== 'signed-in') return;
+    const interval = setInterval(reload, 20_000);
+    return () => clearInterval(interval);
+  }, [authStatus, reload]);
+
   return [state, reload];
 }
 
