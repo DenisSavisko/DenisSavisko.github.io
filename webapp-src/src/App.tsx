@@ -133,8 +133,13 @@ export default function App() {
 
   const isSignedIn = authState.status === 'signed-in';
 
+  // rounded-[48px]/overflow-hidden on KonstaApp itself (not Page) so the clip applies to the
+  // whole phone-shaped column, top and bottom corners both — Page fills it via absolute
+  // inset-0 and doesn't itself grow this box, so both corners stay on screen together at all
+  // times, not just whichever end you've scrolled to. 48px is a rough scale-up of iPhone's
+  // actual screen corner radius (~44-55px on real devices) for our wider 480px column.
   return (
-    <KonstaApp theme="ios" dark={false} safeAreas className="mx-auto max-w-(--k-app-max-w) shadow-2xl">
+    <KonstaApp theme="ios" dark={false} safeAreas className="mx-auto max-w-(--k-app-max-w) overflow-hidden rounded-[48px] shadow-2xl">
       <Page ref={pageRef}>
         <Navbar title={isSignedIn ? TAB_TITLES[tab] : 'MyMainGoals'} />
         <AppleSignInButton />
