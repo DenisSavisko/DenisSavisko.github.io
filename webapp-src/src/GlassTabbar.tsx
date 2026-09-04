@@ -17,12 +17,10 @@ export interface GlassTabbarItem {
 /// standalone <Glass> primitive (translucent blur + iOS's hover-highlight), so this composes
 /// that with plain buttons instead — same visual language, just not Konsta's bar shape.
 ///
-/// The active highlight wraps icon+label together, same as the outer bar wraps all three
-/// tabs — both `rounded-full`, both meant to read as a capsule (round ends, straight
-/// top/bottom), not a circle. That only works when the wrapped content is wider than it is
-/// tall, so icon and label sit side by side here rather than stacked — stacking them made the
-/// highlight taller than wide, which turns `rounded-full` into a blob/circle instead of a
-/// pill.
+/// Icon above label, stacked — same as real iOS tab bars, never side by side. The active
+/// highlight still ends up a horizontal pill (`rounded-full`), not a circle: that comes from
+/// giving the box more horizontal padding than vertical (px-6 vs py-1.5) so the final wrapped
+/// box is wider than it is tall, not from changing how icon/label are laid out inside it.
 export function GlassTabbar({ items }: { items: GlassTabbarItem[] }) {
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-6 z-20 mx-auto flex max-w-(--k-app-max-w) justify-center px-6">
@@ -30,7 +28,7 @@ export function GlassTabbar({ items }: { items: GlassTabbarItem[] }) {
         {items.map((item) => (
           <button key={item.id} onClick={item.onClick} className="flex flex-1 items-center justify-center">
             <span
-              className={`inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[11px] font-medium transition-colors ${
+              className={`flex flex-col items-center gap-0.5 rounded-full px-6 py-1.5 text-[11px] font-medium transition-colors ${
                 item.active ? 'bg-primary/15 text-primary' : 'text-black/60 dark:text-white/60'
               }`}
             >
