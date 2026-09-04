@@ -1,2 +1,14 @@
 @import 'tailwindcss';
 @import 'konsta/react/theme.css';
+
+:root {
+  /* Wider than a real phone (430px-ish on the latest Pro Max) on purpose — full device width
+     feels cramped for mouse/keyboard use, this just reads as "phone-shaped" on a wide window. */
+  --k-app-max-w: 480px;
+}
+
+/* The app itself is capped to --k-app-max-w and centered; this fills the rest of a wide
+   window so the cap doesn't look like an accident. */
+body {
+  background: #e5e5ea;
+}

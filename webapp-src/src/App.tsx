@@ -54,7 +54,7 @@ export default function App() {
   const failedBadgeCount = pendingFailedCount(failed);
 
   return (
-    <KonstaApp theme="ios" dark={false} safeAreas>
+    <KonstaApp theme="ios" dark={false} safeAreas className="mx-auto max-w-(--k-app-max-w) shadow-2xl">
       <Page>
         <Navbar title={TAB_TITLES[tab]} />
         <AppleSignInButton />
@@ -69,13 +69,14 @@ export default function App() {
           <FailedTab state={goalsState} goals={failed} />
         </div>
 
-        <Fab
-          className="fixed bottom-24 right-4 z-10"
-          icon={<PlusIcon className="h-5 w-5" />}
-          onClick={() => setIsAddSheetOpen(true)}
-        />
+        {/* Fixed to the viewport (so it doesn't scroll away), but centered/capped to the same
+            width as the app itself — otherwise it'd hug the real screen edge on a wide window
+            instead of the edge of this phone-shaped column. */}
+        <div className="pointer-events-none fixed inset-x-0 bottom-24 z-10 mx-auto flex max-w-(--k-app-max-w) justify-end pr-4">
+          <Fab className="pointer-events-auto" icon={<PlusIcon className="h-5 w-5" />} onClick={() => setIsAddSheetOpen(true)} />
+        </div>
 
-        <Tabbar labels className="fixed inset-x-0 bottom-0">
+        <Tabbar labels className="fixed inset-x-0 bottom-0 mx-auto max-w-(--k-app-max-w)">
           <TabbarLink
             active={tab === 'active'}
             onClick={() => setTab('active')}
@@ -104,7 +105,7 @@ export default function App() {
 
       <VerifyModal token={token} authStatus={authState.status} onClose={closeVerifyModal} />
 
-      <Sheet opened={isAddSheetOpen} onBackdropClick={() => setIsAddSheetOpen(false)}>
+      <Sheet opened={isAddSheetOpen} onBackdropClick={() => setIsAddSheetOpen(false)} className="mx-auto max-w-(--k-app-max-w)">
         <div className="px-6 pb-10 pt-8 text-center">
           <h2 className="text-lg font-semibold">Coming Soon</h2>
           <p className="mt-2 text-sm text-ios-secondary dark:text-ios-secondary-dark">

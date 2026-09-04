@@ -100,7 +100,7 @@ export function VerifyModal({
   }
 
   return (
-    <Sheet opened={token != null} onBackdropClick={onClose}>
+    <Sheet opened={token != null} onBackdropClick={onClose} className="mx-auto max-w-(--k-app-max-w)">
       <div className="relative px-6 pb-10 pt-12 text-center">
         <button
           onClick={onClose}
