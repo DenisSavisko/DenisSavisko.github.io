@@ -13,12 +13,14 @@ export const CLOUDKIT_ENVIRONMENT: 'development' | 'production' = 'development';
 // SwiftData's automatic CloudKit mirroring (TaskStore.makeDefaultContainer's
 // `cloudKitDatabase: .automatic`) reuses Core Data's private-database naming convention:
 // record type and field names get a "CD_" prefix over the @Model class/property names
-// (MyMainGoals/GoalTask.swift). Confirm these against Schema in the CloudKit Dashboard
-// (Development environment) — this is inferred from SwiftData's known behavior, not
-// verified against this project's actual dashboard.
+// (MyMainGoals/GoalTask.swift). Record type and the "CD_" pattern confirmed against the
+// actual Development schema (CD_GoalTask, CD_adsWatchedForRelease, CD_completedDate all seen
+// there) — title/deadline/isDone/verificationCode specifically follow the same pattern but
+// weren't checked field-by-field.
 export const GOAL_RECORD_TYPE = 'CD_GoalTask';
 export const GOAL_FIELDS = {
   title: 'CD_title',
   deadline: 'CD_deadline',
   isDone: 'CD_isDone',
+  verificationCode: 'CD_verificationCode',
 } as const;

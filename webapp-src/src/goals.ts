@@ -1,10 +1,5 @@
-import {
-  CLOUDKIT_API_TOKEN,
-  CLOUDKIT_CONTAINER_ID,
-  CLOUDKIT_ENVIRONMENT,
-  GOAL_FIELDS,
-  GOAL_RECORD_TYPE,
-} from './cloudkitConfig';
+import { GOAL_FIELDS, GOAL_RECORD_TYPE } from './cloudkitConfig';
+import { getCloudKitContainer, isCloudKitConfigured } from './cloudkit';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 
@@ -89,22 +84,12 @@ export async function initGoalsView() {
   `;
   const content = document.querySelector<HTMLDivElement>('#goals-content')!;
 
-  if (CLOUDKIT_API_TOKEN.startsWith('REPLACE_')) {
+  if (!isCloudKitConfigured()) {
     content.innerHTML = '<p class="error">CloudKit API token not configured yet — see webapp-src/README.md.</p>';
     return;
   }
 
-  CloudKit.configure({
-    containers: [
-      {
-        containerIdentifier: CLOUDKIT_CONTAINER_ID,
-        apiTokenAuth: { apiToken: CLOUDKIT_API_TOKEN, persist: true },
-        environment: CLOUDKIT_ENVIRONMENT,
-      },
-    ],
-  });
-
-  const container = CloudKit.getDefaultContainer();
+  const container = getCloudKitContainer();
 
   container.whenUserSignsIn().then(() => loadGoals(content, container));
   container.whenUserSignsOut().then(() => {
