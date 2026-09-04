@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { App as KonstaApp, Fab, Navbar, Page } from 'konsta/react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { App as KonstaApp, Block, Fab, Navbar, Page } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
 import { useGoals, sortedByTab, type Goal } from './useGoals';
 import { deleteGoal, getCloudKitContainer, markGoalDone } from './cloudkit';
@@ -37,12 +37,20 @@ export default function App() {
   const [shareTarget, setShareTarget] = useState<(ShareVerificationTarget & { headline: string; message: string }) | null>(
     null
   );
+  const pageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const onHashChange = () => setToken(parseToken());
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  // Tabs share one scrolling <Page> — without this, switching tabs while scrolled down (e.g.
+  // on a long Failed list) leaves the newly-shown tab's content scrolled out of view, since
+  // the scroll position belongs to the shared container, not to whichever tab is visible.
+  useEffect(() => {
+    pageRef.current?.scrollTo(0, 0);
+  }, [tab]);
 
   function closeVerifyModal() {
     setToken(null);
@@ -123,78 +131,89 @@ export default function App() {
     });
   }
 
+  const isSignedIn = authState.status === 'signed-in';
+
   return (
     <KonstaApp theme="ios" dark={false} safeAreas className="mx-auto max-w-(--k-app-max-w) shadow-2xl">
-      <Page>
-        <Navbar title={TAB_TITLES[tab]} />
+      <Page ref={pageRef}>
+        <Navbar title={isSignedIn ? TAB_TITLES[tab] : 'MyMainGoals'} />
         <AppleSignInButton />
 
-        <div className="pb-36" hidden={tab !== 'active'}>
-          <ActiveTab
-            state={goalsState}
-            goals={active}
-            onToggleDone={handleToggleDone}
-            onDelete={handleDelete}
-            pendingCompletions={pendingCompletions}
-            pendingDeletions={pendingDeletions}
-          />
-        </div>
-        <div className="pb-36" hidden={tab !== 'done'}>
-          <DoneTab state={goalsState} goals={done} onDelete={handleDelete} pendingDeletions={pendingDeletions} />
-        </div>
-        <div className="pb-36" hidden={tab !== 'failed'}>
-          <FailedTab state={goalsState} goals={failed} onDelete={handleDelete} pendingDeletions={pendingDeletions} />
-        </div>
+        {!isSignedIn ? (
+          // Nothing else is usable while signed out — no tabs, no creating goals — there's
+          // only one thing to do here, which is sign in with the one button above.
+          <Block strong inset className="mt-10 text-center text-ios-secondary dark:text-ios-secondary-dark">
+            {authState.status === 'loading' ? 'Loading…' : 'Sign in with your Apple ID (above) to use MyMainGoals.'}
+          </Block>
+        ) : (
+          <>
+            {/* Only the active tab is ever mounted — as well as being simpler, this and the
+                scroll-reset effect above are both needed to avoid the shared-scroll-position
+                bug (see that effect's comment). */}
+            {tab === 'active' && (
+              <div className="pb-36">
+                <ActiveTab
+                  state={goalsState}
+                  goals={active}
+                  onToggleDone={handleToggleDone}
+                  onDelete={handleDelete}
+                  pendingCompletions={pendingCompletions}
+                  pendingDeletions={pendingDeletions}
+                />
+              </div>
+            )}
+            {tab === 'done' && (
+              <div className="pb-36">
+                <DoneTab state={goalsState} goals={done} onDelete={handleDelete} pendingDeletions={pendingDeletions} />
+              </div>
+            )}
+            {tab === 'failed' && (
+              <div className="pb-36">
+                <FailedTab state={goalsState} goals={failed} onDelete={handleDelete} pendingDeletions={pendingDeletions} />
+              </div>
+            )}
 
-        {/* Fixed to the viewport (so it doesn't scroll away), but centered/capped to the same
-            width as the app itself — otherwise it'd hug the real screen edge on a wide window
-            instead of the edge of this phone-shaped column. A plain wrapper div, not a
-            className override on Fab itself — it ships its own "relative" positioning
-            internally, and fighting that with a conflicting position utility on the same
-            element is what was making the old edge-to-edge Tabbar not render like Konsta's
-            real native-style chrome (see GlassTabbar.tsx for why that's gone now too). */}
-        <div className="pointer-events-none fixed inset-x-0 bottom-32 z-10 mx-auto flex max-w-(--k-app-max-w) justify-end pr-4">
-          {/* Fab renders as an <a> by default, which has no native `disabled` — matches
-              ContentView's `.disabled(!store.canAddTask)` visually/interactively by hand
-              instead. */}
-          <Fab
-            className={`pointer-events-auto${active.length >= 3 ? ' opacity-40' : ''}`}
-            aria-disabled={active.length >= 3}
-            icon={<PlusIcon className="h-5 w-5" />}
-            onClick={active.length >= 3 ? undefined : () => setIsAddSheetOpen(true)}
-          />
-        </div>
+            {/* Fixed to the viewport (so it doesn't scroll away), but centered/capped to the
+                same width as the app itself — otherwise it'd hug the real screen edge on a
+                wide window instead of the edge of this phone-shaped column. A plain wrapper
+                div, not a className override on Fab itself — it ships its own "relative"
+                positioning internally, and fighting that with a conflicting position utility
+                on the same element is what was making the old edge-to-edge Tabbar not render
+                like Konsta's real native-style chrome (see GlassTabbar.tsx for why that's
+                gone now too). */}
+            <div className="pointer-events-none fixed inset-x-0 bottom-32 z-10 mx-auto flex max-w-(--k-app-max-w) justify-end pr-4">
+              {/* Fab renders as an <a> by default, which has no native `disabled` — matches
+                  ContentView's `.disabled(!store.canAddTask)` visually/interactively by hand
+                  instead. */}
+              <Fab
+                className={`pointer-events-auto${active.length >= 3 ? ' opacity-40' : ''}`}
+                aria-disabled={active.length >= 3}
+                icon={<PlusIcon className="h-5 w-5" />}
+                onClick={active.length >= 3 ? undefined : () => setIsAddSheetOpen(true)}
+              />
+            </div>
 
-        <GlassTabbar
-          items={[
-            { id: 'active', label: 'Goals', active: tab === 'active', icon: <ChecklistIcon className="h-4 w-4" />, onClick: () => setTab('active') },
-            { id: 'done', label: 'Done', active: tab === 'done', icon: <CheckCircleIcon className="h-4 w-4" />, onClick: () => setTab('done') },
-            {
-              id: 'failed',
-              label: 'Failed',
-              active: tab === 'failed',
-              icon: <XCircleIcon className="h-4 w-4" />,
-              badge: failedBadgeCount,
-              onClick: () => setTab('failed'),
-            },
-          ]}
-        />
+            <GlassTabbar
+              items={[
+                { id: 'active', label: 'Goals', active: tab === 'active', icon: <ChecklistIcon className="h-4 w-4" />, onClick: () => setTab('active') },
+                { id: 'done', label: 'Done', active: tab === 'done', icon: <CheckCircleIcon className="h-4 w-4" />, onClick: () => setTab('done') },
+                {
+                  id: 'failed',
+                  label: 'Failed',
+                  active: tab === 'failed',
+                  icon: <XCircleIcon className="h-4 w-4" />,
+                  badge: failedBadgeCount,
+                  onClick: () => setTab('failed'),
+                },
+              ]}
+            />
+          </>
+        )}
       </Page>
 
       <VerifyModal token={token} authStatus={authState.status} onClose={closeVerifyModal} />
 
-      <AddGoalSheet
-        opened={isAddSheetOpen}
-        onClose={() => setIsAddSheetOpen(false)}
-        onCreated={reloadGoals}
-        onNeedsShare={(target) =>
-          setShareTarget({
-            ...target,
-            headline: 'Share with your friend',
-            message: `They'll need to open the link and confirm "${target.title}" before it can be marked done.`,
-          })
-        }
-      />
+      <AddGoalSheet opened={isAddSheetOpen} onClose={() => setIsAddSheetOpen(false)} onCreated={reloadGoals} />
 
       <ShareVerificationSheet
         target={shareTarget}

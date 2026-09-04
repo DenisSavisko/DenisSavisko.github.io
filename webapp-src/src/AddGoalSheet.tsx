@@ -1,10 +1,8 @@
 import { useMemo, useState } from 'react';
-import { List, ListInput, ListItem, Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
+import { List, ListInput, Navbar, Preloader, Segmented, SegmentedButton, Sheet } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
-import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
 import { formatDeadline } from './useGoals';
-import type { ShareVerificationTarget } from './ShareVerificationSheet';
 
 /// Mirrors AddTaskSheet's DeadlineOption exactly: a small set of relative offsets, not a
 /// precise date/time picker — goals are a rough estimate, not a reminder (see that enum's own
@@ -23,23 +21,17 @@ type DeadlineOptionId = (typeof DEADLINE_OPTIONS)[number]['id'];
 /// integration (Apple Pay JS / Stripe Elements) not built here. Unstaked goal creation is a
 /// plain CloudKit write, safe to do the same way iOS does it.
 ///
+/// No "require confirmation from someone else" toggle — on iOS that only ever shows when the
+/// goal is staked (`if isStaked { Toggle(...) }`), and web goals are never staked, so it would
+/// always be hidden here too. A goal *synced in* from iOS that already requires verification
+/// still works correctly (ActiveTab's re-share flow) — this only affects goals created here.
+///
 /// The 3-active-goals cap is enforced by disabling the Fab itself (App.tsx), same as
 /// ContentView's `.disabled(!store.canAddTask)` — this sheet doesn't need its own check,
 /// since it can't open in that state to begin with.
-export function AddGoalSheet({
-  opened,
-  onClose,
-  onCreated,
-  onNeedsShare,
-}: {
-  opened: boolean;
-  onClose: () => void;
-  onCreated: () => void;
-  onNeedsShare: (target: ShareVerificationTarget) => void;
-}) {
+export function AddGoalSheet({ opened, onClose, onCreated }: { opened: boolean; onClose: () => void; onCreated: () => void }) {
   const [title, setTitle] = useState('');
   const [deadlineOptionId, setDeadlineOptionId] = useState<DeadlineOptionId>('1d'); // matches selectedDeadlineOption's default of .oneDay
-  const [requiresVerification, setRequiresVerification] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -57,7 +49,6 @@ export function AddGoalSheet({
   function reset() {
     setTitle('');
     setDeadlineOptionId('1d');
-    setRequiresVerification(false);
     setErrorMessage(null);
   }
 
@@ -74,13 +65,9 @@ export function AddGoalSheet({
     setErrorMessage(null);
     try {
       await ensureSignedIn();
-      const token = requiresVerification ? await createVerification(trimmedTitle, null, deadline) : null;
       const container = getCloudKitContainer();
-      await createGoal(container, { title: trimmedTitle, deadline, verificationCode: token });
+      await createGoal(container, { title: trimmedTitle, deadline, verificationCode: null });
       onCreated();
-      if (token) {
-        onNeedsShare({ title: trimmedTitle, deadline, stakeAmountCents: null, token });
-      }
       close();
     } catch (error) {
       setErrorMessage((error as Error).message || "Couldn't create this goal. Please try again.");
@@ -120,11 +107,6 @@ export function AddGoalSheet({
             placeholder="What do you want to do?"
             value={title}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-          />
-          <ListItem
-            label
-            title="Require confirmation from someone else"
-            after={<Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />}
           />
         </List>
 
