@@ -10,22 +10,34 @@ export const CLOUDKIT_API_TOKEN = '6170c2315a12bafdbf085d41a7aba4be1c2ff12d1689c
 // its CloudKit schema is deployed to Production.
 export const CLOUDKIT_ENVIRONMENT: 'development' | 'production' = 'development';
 
+// Core Data/SwiftData's CloudKit mirroring puts everything in this custom zone, never the
+// private database's default zone — confirmed against the actual cloudkit.js source, which
+// silently defaults an omitted zoneID to "_defaultZone" (empty) rather than erroring. Every
+// query/save/delete against GOAL_RECORD_TYPE must pass this explicitly.
+export const CORE_DATA_ZONE_ID = { zoneName: 'com.apple.coredata.cloudkit.zone' };
+
 // SwiftData's automatic CloudKit mirroring (TaskStore.makeDefaultContainer's
 // `cloudKitDatabase: .automatic`) reuses Core Data's private-database naming convention:
 // record type and field names get a "CD_" prefix over the @Model class/property names
-// (MyMainGoals/GoalTask.swift). Record type and the "CD_" pattern confirmed against the
-// actual Development schema (CD_GoalTask, CD_adsWatchedForRelease, CD_completedDate all seen
-// there) — title/deadline/isDone/verificationCode specifically follow the same pattern but
-// weren't checked field-by-field.
+// (MyMainGoals/GoalTask.swift). Fully confirmed against one real record's complete field
+// list in the CloudKit Dashboard (15 fields, exactly matching GoalTask's own properties plus
+// CD_entityName) — not just inferred from the naming pattern anymore.
 export const GOAL_RECORD_TYPE = 'CD_GoalTask';
+export const GOAL_ENTITY_NAME = 'GoalTask';
 export const GOAL_FIELDS = {
+  id: 'CD_id',
   title: 'CD_title',
   deadline: 'CD_deadline',
   isDone: 'CD_isDone',
   completedDate: 'CD_completedDate',
+  createdAt: 'CD_createdAt',
   stakeAmountCents: 'CD_stakeAmountCents',
+  stripePaymentIntentId: 'CD_stripePaymentIntentId',
   stakeStatus: 'CD_stakeStatus',
+  adsWatchedForRelease: 'CD_adsWatchedForRelease',
   requiresVerification: 'CD_requiresVerification',
-  isVerified: 'CD_isVerified',
   verificationCode: 'CD_verificationCode',
+  isVerified: 'CD_isVerified',
+  adsWatchedForVerificationBypass: 'CD_adsWatchedForVerificationBypass',
+  entityName: 'CD_entityName',
 } as const;

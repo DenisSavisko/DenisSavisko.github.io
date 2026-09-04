@@ -49,3 +49,17 @@ export function PlusIcon(props: SVGProps<SVGSVGElement>) {
 export function XMarkIcon(props: SVGProps<SVGSVGElement>) {
   return svg(<path d="m6 6 12 12M18 6 6 18" />, props);
 }
+
+export function TrashIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(
+    <>
+      <path d="M4 7h16M9 7V4h6v3m-8 0 1 13h8l1-13" />
+      <path d="M10 11v6M14 11v6" />
+    </>,
+    props
+  );
+}
+
+export function CircleIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(<circle cx="12" cy="12" r="9" />, props);
+}

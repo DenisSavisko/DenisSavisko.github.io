@@ -21,10 +21,22 @@ like `TaskStore.activeTasks`/`doneTasks`/`failedTasks`). Sign in with your Apple
 JS to see your goals — one shared button in the navbar (`AppleSignInButton.tsx`), not
 per-tab, since CloudKit JS only supports one such element on the page (see its comment).
 
-**Read-only, and no goal creation yet** — the floating `+` button (mirrors `ContentView`'s Fab)
-opens a "coming soon" sheet instead of a real add-goal flow; toggling done, swipe-to-delete,
-and staking/payments would all be real CloudKit/Supabase writes, a bigger separate effort not
-built here. This is a structural-parity pass on the read side, not full feature parity.
+**Writable**: mark done (`ActiveTab.tsx`'s circle tap → `markGoalDone`, releasing the Stripe
+hold via `staking.ts`'s `releaseHold` for staked goals, mirrors `ActiveListView.toggleDone`),
+delete (trash icon on every tab, same `isDeletable`/"still held" gating as iOS, mirrors
+`deleteTask`), and create (`AddGoalSheet.tsx`, mirrors `AddTaskSheet` — title, deadline,
+optional "require confirmation from someone else" toggle wired to the same
+`create_verification` RPC and `ShareVerificationSheet.tsx`, mirroring `ShareVerificationPrompt`).
+
+**Still out of scope**: staking a *new* goal at creation time (real payment collection —
+Apple Pay JS/Stripe Elements — is a separate, bigger integration than a CloudKit write) and
+the ads-driven release/verification-bypass flows (AdMob, iOS-only). The floating `+` button's
+form disables itself with an explanation once 3 active goals exist, matching
+`TaskStore.canAddTask`, rather than silently failing.
+
+No optimistic UI or undo window — unlike iOS's `PendingAction` (a few seconds to undo before
+the write actually happens), this fires the CloudKit write immediately and reloads the list
+on success. A deliberate simplification, not an oversight.
 
 A `#verify/<token>` hash opens the friend-verification confirm flow (`VerifyModal.tsx`,
 `verification.ts`, `supabase.ts`) as a closable bottom sheet *on top of* the Goals tab, the same
@@ -61,6 +73,12 @@ changes).
    `recordName`) before `performQuery({ recordType: ... })` returns anything. If the Goals
    tab loads but the list stays empty despite having goals on your phone, this is the first
    thing to check (Development → Schema → `CD_GoalTask` → Indexes).
+4b. **Zone**: Core Data/SwiftData puts every record in a custom zone,
+   `com.apple.coredata.cloudkit.zone` (`CORE_DATA_ZONE_ID` in `cloudkitConfig.ts`), never the
+   private database's default zone. Confirmed against the real `cloudkit.js` source: an
+   omitted `zoneID` silently defaults to `"_defaultZone"` (empty) rather than erroring — every
+   query/save/delete against `GOAL_RECORD_TYPE` must pass this zone explicitly, or it'll look
+   like there's simply no data.
 5. **API Access tab**: enable Web Services for this container and generate a Web Services
    API Token. Paste it into `CLOUDKIT_API_TOKEN` in `cloudkitConfig.ts`.
 6. **Allowed origins** (same API Access area, Sign-in with Apple ID / CORS config for

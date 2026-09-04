@@ -1,14 +1,24 @@
 import { ListItem } from 'konsta/react';
 import { GoalListPage } from './GoalListPage';
-import { ChecklistIcon } from './icons';
+import { ChecklistIcon, CircleIcon, TrashIcon } from './icons';
 import { formatDeadline } from './useGoals';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
 
 /// Mirrors ActiveListView on iOS — a flat list (no month grouping), sorted by nearest
-/// deadline first. Read-only: no toggle-done or swipe-to-delete, since those write to
-/// CloudKit and are out of scope for this proof of concept (see webapp-src/README.md).
-export function ActiveTab({ state, goals }: { state: GoalsState; goals: Goal[] }) {
+/// deadline first. No swipe gestures on web (Konsta has no swipeout support) — delete is a
+/// visible trash icon instead, same isDeletable/needsVerification gating as iOS either way.
+export function ActiveTab({
+  state,
+  goals,
+  onToggleDone,
+  onDelete,
+}: {
+  state: GoalsState;
+  goals: Goal[];
+  onToggleDone: (goal: Goal) => void;
+  onDelete: (goal: Goal) => void;
+}) {
   return (
     <GoalListPage
       status={state.status}
@@ -16,15 +26,35 @@ export function ActiveTab({ state, goals }: { state: GoalsState; goals: Goal[] }
       goals={goals}
       emptyIcon={<ChecklistIcon />}
       emptyTitle="No Goals Yet"
-      emptyText="Goals you add in the app will show up here."
-      renderRow={(goal) => <ActiveRow key={goal.id} goal={goal} />}
+      emptyText={`Add up to 3 goals to focus on.`}
+      renderRow={(goal) => <ActiveRow key={goal.id} goal={goal} onToggleDone={onToggleDone} onDelete={onDelete} />}
     />
   );
 }
 
-function ActiveRow({ goal }: { goal: Goal }) {
+function ActiveRow({
+  goal,
+  onToggleDone,
+  onDelete,
+}: {
+  goal: Goal;
+  onToggleDone: (goal: Goal) => void;
+  onDelete: (goal: Goal) => void;
+}) {
   return (
     <ListItem
+      media={
+        <button
+          aria-label="Mark done"
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleDone(goal);
+          }}
+          className="text-ios-secondary dark:text-ios-secondary-dark"
+        >
+          <CircleIcon className="h-6 w-6" />
+        </button>
+      }
       title={goal.title}
       subtitle={`Due ${formatDeadline(goal.deadline)}`}
       footer={
@@ -32,7 +62,14 @@ function ActiveRow({ goal }: { goal: Goal }) {
           <span className="text-blue-500 dark:text-blue-400">Awaiting a friend's confirmation</span>
         ) : undefined
       }
-      after={<StakeBadge goal={goal} tab="active" />}
+      after={
+        <div className="flex items-center gap-2">
+          <StakeBadge goal={goal} tab="active" />
+          <button aria-label="Delete goal" onClick={() => onDelete(goal)} className="text-ios-secondary dark:text-ios-secondary-dark">
+            <TrashIcon className="h-5 w-5" />
+          </button>
+        </div>
+      }
     />
   );
 }

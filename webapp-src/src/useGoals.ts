@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { GOAL_FIELDS, GOAL_RECORD_TYPE } from './cloudkitConfig';
+import { useCallback, useEffect, useState } from 'react';
+import { CORE_DATA_ZONE_ID, GOAL_FIELDS, GOAL_RECORD_TYPE } from './cloudkitConfig';
 import { getCloudKitContainer } from './cloudkit';
 import type { CloudKitAuthState } from './useCloudKitAuth';
 
@@ -7,13 +7,19 @@ export type GoalStatus = 'active' | 'done' | 'failed';
 
 export interface Goal {
   id: string;
+  /// Needed to write back to this exact record (markGoalDone/deleteGoal) — recordName is
+  /// CloudKit's own identity for the record, unrelated to `id` (see cloudkitConfig.ts).
+  recordName: string;
+  recordChangeTag: string;
   title: string;
   deadline: Date;
   isDone: boolean;
   completedDate: Date | null;
   stakeAmountCents: number | null;
+  stripePaymentIntentId: string | null;
   stakeStatus: string | null;
   requiresVerification: boolean;
+  verificationCode: string | null;
   isVerified: boolean;
 }
 
@@ -23,31 +29,34 @@ export type GoalsState =
   | { status: 'error'; message: string }
   | { status: 'loaded'; goals: Goal[] };
 
-function fieldValue(record: { fields: Record<string, { value: unknown }> }, key: string): unknown {
+function fieldValue(record: CKRecord, key: string): unknown {
   return record.fields[key]?.value;
 }
 
-function mapRecord(record: { recordName: string; fields: Record<string, { value: unknown }> }): Goal {
+function mapRecord(record: CKRecord): Goal {
   const deadline = fieldValue(record, GOAL_FIELDS.deadline);
   const completedDate = fieldValue(record, GOAL_FIELDS.completedDate);
   return {
-    id: record.recordName,
+    id: String(fieldValue(record, GOAL_FIELDS.id) ?? record.recordName),
+    recordName: record.recordName,
+    recordChangeTag: record.recordChangeTag ?? '',
     title: String(fieldValue(record, GOAL_FIELDS.title) ?? ''),
     deadline: new Date(deadline as string | number),
     isDone: Boolean(fieldValue(record, GOAL_FIELDS.isDone)),
     completedDate: completedDate != null ? new Date(completedDate as string | number) : null,
     stakeAmountCents: (fieldValue(record, GOAL_FIELDS.stakeAmountCents) as number | null) ?? null,
+    stripePaymentIntentId: (fieldValue(record, GOAL_FIELDS.stripePaymentIntentId) as string | null) ?? null,
     stakeStatus: (fieldValue(record, GOAL_FIELDS.stakeStatus) as string | null) ?? null,
     requiresVerification: Boolean(fieldValue(record, GOAL_FIELDS.requiresVerification)),
+    verificationCode: (fieldValue(record, GOAL_FIELDS.verificationCode) as string | null) || null,
     isVerified: Boolean(fieldValue(record, GOAL_FIELDS.isVerified)),
   };
 }
 
-/// Loads once per sign-in — reloading after a change (e.g. a future "mark done" write) isn't
-/// implemented yet, since this tab is currently read-only, same scope as the rest of this
-/// proof of concept.
-export function useGoals(authStatus: CloudKitAuthState['status']): GoalsState {
+export function useGoals(authStatus: CloudKitAuthState['status']): [GoalsState, () => void] {
   const [state, setState] = useState<GoalsState>({ status: 'idle' });
+  const [reloadToken, setReloadToken] = useState(0);
+  const reload = useCallback(() => setReloadToken((t) => t + 1), []);
 
   useEffect(() => {
     if (authStatus !== 'signed-in') {
@@ -59,7 +68,10 @@ export function useGoals(authStatus: CloudKitAuthState['status']): GoalsState {
     (async () => {
       try {
         const container = getCloudKitContainer();
-        const response = await container.privateCloudDatabase.performQuery({ recordType: GOAL_RECORD_TYPE });
+        const response = await container.privateCloudDatabase.performQuery(
+          { recordType: GOAL_RECORD_TYPE },
+          { zoneID: CORE_DATA_ZONE_ID }
+        );
         if (response.hasErrors) {
           throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
         }
@@ -71,9 +83,9 @@ export function useGoals(authStatus: CloudKitAuthState['status']): GoalsState {
     return () => {
       cancelled = true;
     };
-  }, [authStatus]);
+  }, [authStatus, reloadToken]);
 
-  return state;
+  return [state, reload];
 }
 
 /// Mirrors GoalTask.status(asOf:) in MyMainGoals/GoalTask.swift.

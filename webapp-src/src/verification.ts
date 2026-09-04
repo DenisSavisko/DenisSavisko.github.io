@@ -9,6 +9,18 @@ export interface VerificationInfo {
 
 export type ConfirmResult = 'confirmed' | 'already_confirmed' | 'not_found';
 
+/// Mirrors VerificationClient.create on iOS — mints the token before the goal exists, same
+/// order AddTaskSheet uses (server-side token first, then the local/CloudKit record).
+export async function createVerification(title: string, stakeAmountCents: number | null, deadline: Date): Promise<string> {
+  const { data, error } = await supabase.rpc('create_verification', {
+    p_title: title,
+    p_stake_cents: stakeAmountCents,
+    p_deadline: deadline.toISOString(),
+  });
+  if (error) throw error;
+  return data as string;
+}
+
 export async function getVerification(token: string): Promise<VerificationInfo> {
   const { data, error } = await supabase.rpc('get_verification', { p_token: token });
   if (error) throw error;

@@ -1,12 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { App as KonstaApp, Badge, Fab, Navbar, Page, Sheet, Tabbar, TabbarLink } from 'konsta/react';
+import { App as KonstaApp, Badge, Fab, Navbar, Page, Tabbar, TabbarLink } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
-import { useGoals, sortedByTab } from './useGoals';
+import { useGoals, sortedByTab, type Goal } from './useGoals';
+import { deleteGoal, getCloudKitContainer, markGoalDone } from './cloudkit';
+import { releaseHold } from './staking';
 import { ActiveTab } from './ActiveTab';
 import { DoneTab } from './DoneTab';
 import { FailedTab, pendingFailedCount } from './FailedTab';
 import { VerifyModal } from './VerifyModal';
 import { AppleSignInButton } from './AppleSignInButton';
+import { AddGoalSheet } from './AddGoalSheet';
+import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVerificationSheet';
 import { ChecklistIcon, CheckCircleIcon, PlusIcon, XCircleIcon } from './icons';
 
 type Tab = 'active' | 'done' | 'failed';
@@ -28,6 +32,9 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('active');
   const [token, setToken] = useState<string | null>(() => parseToken());
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
+  const [shareTarget, setShareTarget] = useState<(ShareVerificationTarget & { headline: string; message: string }) | null>(
+    null
+  );
 
   useEffect(() => {
     const onHashChange = () => setToken(parseToken());
@@ -43,7 +50,7 @@ export default function App() {
   }
 
   const authState = useCloudKitAuth();
-  const goalsState = useGoals(authState.status);
+  const [goalsState, reloadGoals] = useGoals(authState.status);
 
   // Mirrors TaskStore.activeTasks/doneTasks/failedTasks — recomputed whenever the underlying
   // goals list changes, not on every render (the "now" cutoff only needs to be roughly fresh).
@@ -53,6 +60,56 @@ export default function App() {
   );
   const failedBadgeCount = pendingFailedCount(failed);
 
+  /// Mirrors ActiveListView.toggleDone: gated goals go to the share prompt instead of
+  /// completing, staked goals release their hold immediately after marking done.
+  async function handleToggleDone(goal: Goal) {
+    if (goal.requiresVerification && !goal.isVerified) {
+      if (!goal.verificationCode) {
+        window.alert("This goal is missing its verification link — can't re-share it.");
+        return;
+      }
+      setShareTarget({
+        title: goal.title,
+        deadline: goal.deadline,
+        stakeAmountCents: goal.stakeAmountCents,
+        token: goal.verificationCode,
+        headline: 'Share with your friend',
+        message: "This goal needs a friend's confirmation before it can be marked done.",
+      });
+      return;
+    }
+    try {
+      const container = getCloudKitContainer();
+      await markGoalDone(container, goal);
+      if (goal.stripePaymentIntentId) {
+        try {
+          await releaseHold(goal.stripePaymentIntentId);
+        } catch {
+          // Left as "held" — iOS's StakeSync retries this on next foreground; there's no
+          // equivalent background retry on web, so it just stays held until revisited.
+        }
+      }
+      reloadGoals();
+    } catch (error) {
+      window.alert(`Couldn't mark this done: ${(error as Error).message}`);
+    }
+  }
+
+  /// Mirrors ActiveListView/DoneListView/FailedListView's deleteTask + isDeletable gating.
+  async function handleDelete(goal: Goal) {
+    if (goal.stakeStatus === 'held') {
+      window.alert("Staked goals can't be deleted while active. Complete it before the deadline, or wait to see if it fails.");
+      return;
+    }
+    if (!window.confirm(`Delete "${goal.title}"?`)) return;
+    try {
+      await deleteGoal(getCloudKitContainer(), goal.recordName);
+      reloadGoals();
+    } catch (error) {
+      window.alert(`Couldn't delete this goal: ${(error as Error).message}`);
+    }
+  }
+
   return (
     <KonstaApp theme="ios" dark={false} safeAreas className="mx-auto max-w-(--k-app-max-w) shadow-2xl">
       <Page>
@@ -60,13 +117,13 @@ export default function App() {
         <AppleSignInButton />
 
         <div className="pb-28" hidden={tab !== 'active'}>
-          <ActiveTab state={goalsState} goals={active} />
+          <ActiveTab state={goalsState} goals={active} onToggleDone={handleToggleDone} onDelete={handleDelete} />
         </div>
         <div className="pb-28" hidden={tab !== 'done'}>
-          <DoneTab state={goalsState} goals={done} />
+          <DoneTab state={goalsState} goals={done} onDelete={handleDelete} />
         </div>
         <div className="pb-28" hidden={tab !== 'failed'}>
-          <FailedTab state={goalsState} goals={failed} />
+          <FailedTab state={goalsState} goals={failed} onDelete={handleDelete} />
         </div>
 
         {/* Fixed to the viewport (so it doesn't scroll away), but centered/capped to the same
@@ -105,15 +162,26 @@ export default function App() {
 
       <VerifyModal token={token} authStatus={authState.status} onClose={closeVerifyModal} />
 
-      <Sheet opened={isAddSheetOpen} onBackdropClick={() => setIsAddSheetOpen(false)} className="mx-auto max-w-(--k-app-max-w)">
-        <div className="px-6 pb-10 pt-8 text-center">
-          <h2 className="text-lg font-semibold">Coming Soon</h2>
-          <p className="mt-2 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-            Creating and staking new goals from the web isn't built yet — for now, add goals in the iOS app and they'll show up
-            here.
-          </p>
-        </div>
-      </Sheet>
+      <AddGoalSheet
+        opened={isAddSheetOpen}
+        activeCount={active.length}
+        onClose={() => setIsAddSheetOpen(false)}
+        onCreated={reloadGoals}
+        onNeedsShare={(target) =>
+          setShareTarget({
+            ...target,
+            headline: 'Share with your friend',
+            message: `They'll need to open the link and confirm "${target.title}" before it can be marked done.`,
+          })
+        }
+      />
+
+      <ShareVerificationSheet
+        target={shareTarget}
+        headline={shareTarget?.headline ?? ''}
+        message={shareTarget?.message ?? ''}
+        onClose={() => setShareTarget(null)}
+      />
     </KonstaApp>
   );
 }
