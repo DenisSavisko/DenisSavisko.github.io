@@ -111,14 +111,22 @@ export async function deleteGoal(container: CKContainer, recordName: string): Pr
   }
 }
 
-/// Mirrors TaskStore.addTask — unstaked goals only (see AddGoalSheet.tsx's comment for why
-/// staking isn't built on web). recordName is left for CloudKit to generate (confirmed: it's
-/// an internal identity, unrelated to CD_id — see cloudkitConfig.ts). CD_id is an ordinary
-/// data field the iOS app happens to always populate with a fresh UUID at creation
-/// (GoalTask.init's default), so this does the same rather than leaving it unset.
+/// Mirrors TaskStore.addTask/addStakedTask (params.stake is only set from the latter's call
+/// site — see AddGoalSheet.tsx, which only reaches this with a stake after create-hold has
+/// already confirmed the PaymentIntent, same "never insert a staked goal locally on a hope
+/// the payment will go through" rule as addStakedTask's own comment). recordName is left for
+/// CloudKit to generate (confirmed: it's an internal identity, unrelated to CD_id — see
+/// cloudkitConfig.ts). CD_id is an ordinary data field the iOS app happens to always populate
+/// with a fresh UUID at creation (GoalTask.init's default), so this does the same rather than
+/// leaving it unset.
 export async function createGoal(
   container: CKContainer,
-  params: { title: string; deadline: Date; verificationCode: string | null }
+  params: {
+    title: string;
+    deadline: Date;
+    verificationCode: string | null;
+    stake: { amountCents: number; paymentIntentId: string } | null;
+  }
 ): Promise<void> {
   const now = Date.now();
   const fields: Record<string, { value: unknown }> = {
@@ -137,6 +145,11 @@ export async function createGoal(
   // than writing an empty string, for a goal that doesn't need a friend's confirmation.
   if (params.verificationCode) {
     fields[GOAL_FIELDS.verificationCode] = { value: params.verificationCode };
+  }
+  if (params.stake) {
+    fields[GOAL_FIELDS.stakeAmountCents] = { value: params.stake.amountCents };
+    fields[GOAL_FIELDS.stripePaymentIntentId] = { value: params.stake.paymentIntentId };
+    fields[GOAL_FIELDS.stakeStatus] = { value: 'held' };
   }
   const response = await container.privateCloudDatabase.saveRecords(
     [{ recordType: GOAL_RECORD_TYPE, fields }],

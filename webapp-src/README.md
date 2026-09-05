@@ -28,15 +28,27 @@ delete (trash icon on every tab, same `isDeletable`/"still held" gating as iOS, 
 optional "require confirmation from someone else" toggle wired to the same
 `create_verification` RPC and `ShareVerificationSheet.tsx`, mirroring `ShareVerificationPrompt`).
 
-**Still out of scope**: staking a *new* goal at creation time (real payment collection —
-Apple Pay JS/Stripe Elements — is a separate, bigger integration than a CloudKit write) and
-the ads-driven release/verification-bypass flows (AdMob, iOS-only). The floating `+` button's
-form disables itself with an explanation once 3 active goals exist, matching
-`TaskStore.canAddTask`, rather than silently failing.
+**Staking**: `AddGoalSheet.tsx` collects a card via Stripe (`@stripe/react-stripe-js`,
+`CardElement`, plus a `PaymentRequestButtonElement` for Apple Pay once
+`mymaingoals.app` is registered as a payment method domain in the Stripe Dashboard — a single
+integration handles both, no separate Apple Pay JS code path). `staking.ts`'s `createHold`
+calls the same `create-hold` edge function iOS uses; a card that comes back `requires_action`
+(3D Secure) is resolved client-side via `stripe.confirmCardPayment`, mirroring what
+`ApplePayContext` does internally on iOS with the same `clientSecret`. The goal is only ever
+written to CloudKit after the hold is confirmed (`createGoal`'s comment), same
+"never insert a staked goal locally on a hope the payment will go through" rule as
+`TaskStore.addStakedTask`. Verified end-to-end against the live (test-mode) Stripe/Supabase
+functions via curl with Stripe's `pm_card_visa` test token before wiring into the UI — the
+actual browser UI (card form rendering, the Apple Pay button appearing) hasn't been visually
+tested, since there's no browser tooling available in this environment.
 
-No optimistic UI or undo window — unlike iOS's `PendingAction` (a few seconds to undo before
-the write actually happens), this fires the CloudKit write immediately and reloads the list
-on success. A deliberate simplification, not an oversight.
+**Still out of scope**: the ads-driven release/verification-bypass flows (AdMob, iOS-only —
+no ad SDK or ad revenue path exists on web). The floating `+` button disables itself once 3
+active goals exist, matching `TaskStore.canAddTask`, rather than opening a sheet that then
+explains why it can't do anything.
+
+Mark-done and delete both go through `usePendingAction.ts`, mirroring iOS's `PendingAction` —
+a few seconds to undo (tap to cancel) before the write actually fires.
 
 A `#verify/<token>` hash opens the friend-verification confirm flow (`VerifyModal.tsx`,
 `verification.ts`, `supabase.ts`) as a closable bottom sheet *on top of* the Goals tab, the same
@@ -45,6 +57,14 @@ page. Confirming still requires signing in (the same shared CloudKit session), a
 signed-in person's own synced goals include that verification code, it blocks with "this is
 your own goal" instead of showing Confirm — mirrors `VerifyGoalView.matchingLocalTask` on iOS,
 backed by a real CloudKit query instead of a local device store.
+
+**Background sync** (`useBackgroundSync.ts`, running alongside `useGoals`'s own refresh cycle
+— tab focus, the 20s poll) mirrors three iOS foreground tasks that would otherwise only ever
+happen on a full relaunch: `VerificationSync.syncPendingVerifications` (a friend confirming
+elsewhere never reached a web-only goal owner without this), `StakeSync.retryPendingReleases`
+(a release-hold call that didn't confirm the first time), and `StakeSync.syncHeldStatuses`
+(the expiry cron capturing a stake with no client call at all, for a goal staked on iOS and
+viewed on web).
 
 The manual CloudKit Dashboard steps below (API token, schema check, queryable index) are done
 as of this writing — `cloudkitConfig.ts` has a real token and `CD_GoalTask`/`recordName` are
