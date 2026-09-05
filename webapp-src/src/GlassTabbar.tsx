@@ -27,8 +27,16 @@ export function GlassTabbar({ items }: { items: GlassTabbarItem[] }) {
       <Glass className="pointer-events-auto flex items-stretch gap-1 rounded-full p-1.5">
         {items.map((item) => (
           <button key={item.id} onClick={item.onClick} className="flex flex-1 items-center justify-center">
+            {/* No color transition here on purpose: tapping Goals/Done back and forth as fast
+                as possible on iOS Safari made the icon/label fade out to nothing and stay that
+                way — a `transition-colors` sitting on top of Glass's own backdrop-blur-lg
+                (see GlassClasses.js) means every tap restarts a color transition mid-flight of
+                the last one, and Safari's compositor loses track of this span's real opacity
+                under that churn since it has to recomposite the whole blurred layer on each
+                style change. `transform:translateZ(0)` promotes the span to its own layer so
+                its paint isn't at the mercy of the backdrop-blur layer's recompositing. */}
             <span
-              className={`flex flex-col items-center gap-0.5 rounded-full px-6 py-1.5 text-[11px] font-medium transition-colors ${
+              className={`flex flex-col items-center gap-0.5 rounded-full px-6 py-1.5 text-[11px] font-medium [transform:translateZ(0)] ${
                 item.active ? 'bg-primary/15 text-primary' : 'text-black/60 dark:text-white/60'
               }`}
             >

@@ -208,7 +208,7 @@ export default function App() {
                   those are the same specificity as Fab's own base classes and cascade order
                   between the two isn't something to rely on. */}
               <Fab
-                className={`pointer-events-auto !h-16 !w-16${active.length >= 3 ? ' opacity-40' : ''}`}
+                className={`pointer-events-auto !h-16 !w-16 ${active.length >= 3 ? 'opacity-40' : ''}`}
                 aria-disabled={active.length >= 3}
                 icon={<PlusIcon className="h-7 w-7" />}
                 onClick={active.length >= 3 ? undefined : () => setIsAddSheetOpen(true)}
