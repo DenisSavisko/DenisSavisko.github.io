@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { App as KonstaApp, Block, Fab, Navbar, Page } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
+import { useSystemDarkMode } from './useSystemDarkMode';
 import { useGoals, sortedByTab, mapRecord, type Goal } from './useGoals';
 import { deleteGoal, getCloudKitContainer, markGoalDone } from './cloudkit';
 import { ensureSignedIn } from './supabase';
@@ -40,6 +41,7 @@ export default function App() {
     null
   );
   const pageRef = useRef<HTMLDivElement>(null);
+  const isDark = useSystemDarkMode();
 
   useEffect(() => {
     const onHashChange = () => setToken(parseToken());
@@ -146,7 +148,7 @@ export default function App() {
   const isSignedIn = authState.status === 'signed-in';
 
   return (
-    <KonstaApp theme="ios" dark={false} safeAreas className="mx-auto max-w-(--k-app-max-w)">
+    <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
       <Page ref={pageRef}>
         <Navbar title={isSignedIn ? TAB_TITLES[tab] : 'MyMainGoals'} />
         <AppleSignInButton />

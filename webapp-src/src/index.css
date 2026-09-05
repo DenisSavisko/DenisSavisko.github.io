@@ -8,12 +8,19 @@
 }
 
 /* The app itself is capped to --k-app-max-w and centered; this fills the rest of a wide
-   window. Matches Konsta's own light-theme Page background (bg-ios-light-surface, see
-   node_modules/konsta/styles/colors.css) rather than a distinct letterbox color, so the
-   column has no visible seam against the page around it now that it's no longer a
-   rounded/shadowed card. */
+   window. Matches Konsta's own Page background for the active theme
+   (bg-ios-light-surface/bg-ios-dark-surface, see node_modules/konsta/styles/colors.css)
+   rather than a distinct letterbox color, so the column has no visible seam against the page
+   around it now that it's no longer a rounded/shadowed card. Plain media query, not the
+   .dark class useSystemDarkMode.ts toggles — this is ordinary CSS, not a Tailwind utility, so
+   it doesn't need to go through that mechanism at all. */
 body {
   background: #efeff4;
+}
+@media (prefers-color-scheme: dark) {
+  body {
+    background: #000;
+  }
 }
 
 /* Konsta's <App> sizes itself with min-h-screen (100vh, see AppClasses.js) — but iOS Safari's
