@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
-import { List, ListInput, ListItem, Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
+import { List, ListItem, Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
 import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
@@ -287,15 +287,17 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
       />
 
       <div className="px-4 pb-10 pt-4">
-        <List strongIos insetIos>
-          <ListInput
-            label="Title"
-            type="text"
-            placeholder="What do you want to do?"
-            value={title}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-          />
-        </List>
+        {/* Plain input styled to match Stake/Deadline's label+control pattern below, rather
+            than Konsta's ListInput/List card styling (its own label position/inset margin
+            didn't line up with everything else on this sheet). */}
+        <p className="mb-2 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Title</p>
+        <input
+          type="text"
+          placeholder="What do you want to do?"
+          value={title}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+          className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-base text-black outline-none dark:border-white/15 dark:text-white"
+        />
 
         {/* Mirrors AddTaskSheet's Section("Stake (Apple Pay)") */}
         <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Stake</p>
