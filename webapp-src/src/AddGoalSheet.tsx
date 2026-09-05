@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CardElement, Elements, PaymentRequestButtonElement, useElements, useStripe } from '@stripe/react-stripe-js';
+import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
 import { List, ListInput, ListItem, Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
@@ -37,6 +37,7 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
   const stripe = useStripe();
   const elements = useElements();
 
+  const [step, setStep] = useState<'form' | 'card'>('form');
   const [title, setTitle] = useState('');
   const [deadlineOptionId, setDeadlineOptionId] = useState<DeadlineOptionId>('1d'); // matches selectedDeadlineOption's default of .oneDay
   const [stakeOptionId, setStakeOptionId] = useState<StakeOptionId>('none');
@@ -60,19 +61,23 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
 
   const isValid = title.trim() !== '';
 
-  // The paymentmethod handler below is registered once per PaymentRequest instance, so it'd
-  // otherwise close over stale title/deadline/requiresVerification from whenever the stake
-  // amount was last changed — a ref sidesteps that without recreating the PaymentRequest (and
-  // flickering the Apple Pay button) on every keystroke.
-  const latest = useRef({ title, deadline, requiresVerification });
-  latest.current = { title, deadline, requiresVerification };
+  // The paymentmethod/cancel handlers below are registered once (see the PaymentRequest
+  // effect, which only depends on `stripe`) so they'd otherwise close over stale
+  // title/deadline/requiresVerification/stakeOption from whenever the component last
+  // rendered when the effect ran — this ref sidesteps that without recreating the
+  // PaymentRequest (and re-running canMakePayment(), the exact delay being fixed below) every
+  // time any of those change.
+  const latest = useRef({ title, deadline, requiresVerification, stakeOption });
+  latest.current = { title, deadline, requiresVerification, stakeOption };
 
   function reset() {
+    setStep('form');
     setTitle('');
     setDeadlineOptionId('1d');
     setStakeOptionId('none');
     setRequiresVerification(false);
     setErrorMessage(null);
+    setIsSaving(false);
   }
 
   function close() {
@@ -86,7 +91,7 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
   async function obtainVerificationToken(): Promise<string | null> {
     if (!latest.current.requiresVerification) return null;
     await ensureSignedIn();
-    return createVerification(latest.current.title.trim(), stakeOption.cents || null, latest.current.deadline);
+    return createVerification(latest.current.title.trim(), latest.current.stakeOption.cents || null, latest.current.deadline);
   }
 
   /// Mirrors GoalTask never being inserted locally until the backend hold is confirmed
@@ -109,7 +114,8 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
   /// which only the client can resolve (mirrors ApplePayContext using the same clientSecret
   /// internally on iOS).
   async function chargeAndFinish(paymentMethodId: string, verificationToken: string | null) {
-    const hold = await createHold(paymentMethodId, stakeOption.cents, latest.current.deadline);
+    const { stakeOption: currentStake, deadline: currentDeadline } = latest.current;
+    const hold = await createHold(paymentMethodId, currentStake.cents, currentDeadline);
     if (hold.status === 'requires_action') {
       if (!stripe) throw new Error('Payment could not be confirmed.');
       const { error, paymentIntent } = await stripe.confirmCardPayment(hold.clientSecret);
@@ -118,15 +124,16 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
         throw new Error('Payment could not be confirmed.');
       }
     }
-    await finishCreatingGoal(verificationToken, { amountCents: stakeOption.cents, paymentIntentId: hold.paymentIntentId });
+    await finishCreatingGoal(verificationToken, { amountCents: currentStake.cents, paymentIntentId: hold.paymentIntentId });
   }
 
-  // Apple Pay button — only shown once canMakePayment() resolves truthy (Safari with a card
-  // in Wallet, and mymaingoals.app registered as a Stripe payment method domain). Recreated
-  // when the stake amount changes so the sheet shows the right total; title/deadline changes
-  // don't need to recreate it (see the `latest` ref above).
+  // Set up once `stripe` is ready — not gated on isStaked — so canMakePayment()'s round trip
+  // (a real async browser call) is already resolved by the time a stake is picked, instead of
+  // the Apple Pay button popping in a moment after switching away from "None". The total
+  // starts at a placeholder and gets kept in sync by the effect below; canMakePayment() only
+  // checks wallet availability, not the exact amount, so this doesn't affect that check.
   useEffect(() => {
-    if (!stripe || !isStaked) {
+    if (!stripe) {
       setPaymentRequest(null);
       setCanUseApplePay(false);
       return;
@@ -134,7 +141,7 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
     const pr = stripe.paymentRequest({
       country: 'US',
       currency: 'usd',
-      total: { label: 'Goal Stake (refundable)', amount: stakeOption.cents },
+      total: { label: 'Goal Stake (refundable)', amount: STAKE_OPTIONS[1].cents },
     });
     let cancelled = false;
     pr.canMakePayment().then((result) => {
@@ -147,31 +154,69 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
         ev.complete('success');
       } catch (error) {
         ev.complete('fail');
+        setIsSaving(false);
         setErrorMessage((error as Error).message || "Couldn't process payment. Please try again.");
       }
+    });
+    pr.on('cancel', () => {
+      setIsSaving(false);
     });
     setPaymentRequest(pr);
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stripe, isStaked, stakeOption.cents]);
+  }, [stripe]);
 
-  async function handleCreate() {
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) return;
+  // Keeps the Apple Pay sheet's displayed total accurate as the stake selection changes,
+  // without recreating the PaymentRequest (which would re-trigger canMakePayment() and risk
+  // the same pop-in this is meant to avoid).
+  useEffect(() => {
+    paymentRequest?.update({ total: { label: 'Goal Stake (refundable)', amount: stakeOption.cents || STAKE_OPTIONS[1].cents } });
+  }, [paymentRequest, stakeOption.cents]);
+
+  /// Mirrors AddTaskSheet.handleAddTapped: unstaked submits directly; staked hands off to
+  /// whichever payment path is available — Apple Pay's native sheet if it can, a card-entry
+  /// step (this app's closest equivalent, there's no browser-native card popup) if not —
+  /// rather than showing payment fields inline while the rest of the form is still being
+  /// filled in.
+  function handleAddTapped() {
+    if (!isValid) return;
+    if (!isStaked) {
+      setIsSaving(true);
+      setErrorMessage(null);
+      obtainVerificationToken()
+        .then((token) => finishCreatingGoal(token, null))
+        .catch((error) => {
+          setErrorMessage((error as Error).message || "Couldn't create this goal. Please try again.");
+          setIsSaving(false);
+        });
+      return;
+    }
+    if (canUseApplePay && paymentRequest) {
+      // Must be called synchronously from this click handler, with no `await` before it —
+      // browsers only allow PaymentRequest.show() as a direct result of a user gesture.
+      // Everything after payment (verification token, create-hold, the CloudKit write) runs
+      // in the paymentmethod handler registered above instead, which has no such restriction.
+      setIsSaving(true);
+      setErrorMessage(null);
+      paymentRequest.show();
+      return;
+    }
+    setStep('card');
+  }
+
+  async function handlePayWithCard() {
+    if (!stripe || !elements) {
+      setErrorMessage('Payment is still loading — try again in a moment.');
+      return;
+    }
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) return;
 
     setIsSaving(true);
     setErrorMessage(null);
     try {
-      if (!isStaked) {
-        const verificationToken = await obtainVerificationToken();
-        await finishCreatingGoal(verificationToken, null);
-        return;
-      }
-      if (!stripe || !elements) throw new Error('Payment is still loading — try again in a moment.');
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error('Enter a card to stake this goal.');
       const { paymentMethod, error } = await stripe.createPaymentMethod({ type: 'card', card: cardElement });
       if (error || !paymentMethod) throw new Error(error?.message ?? 'Card could not be processed.');
       const verificationToken = await obtainVerificationToken();
@@ -184,6 +229,39 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
   }
 
   if (!opened) return null;
+
+  if (step === 'card') {
+    return (
+      <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
+        <Navbar
+          title="Card Details"
+          left={
+            <button onClick={() => setStep('form')} disabled={isSaving} className="px-2 text-primary">
+              Back
+            </button>
+          }
+          right={
+            isSaving ? (
+              <Preloader className="mr-2" />
+            ) : (
+              <button onClick={handlePayWithCard} className="px-2 font-semibold text-primary">
+                Pay {formatStakeCents(stakeOption.cents)}
+              </button>
+            )
+          }
+        />
+        <div className="px-4 pb-10 pt-6">
+          <p className="mb-4 px-2 text-center text-sm text-ios-secondary dark:text-ios-secondary-dark">
+            Charged only if you miss the deadline — completing "{title.trim()}" in time refunds it in full.
+          </p>
+          <div className="rounded-2xl border border-black/10 px-3 py-3 dark:border-white/15">
+            <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
+          </div>
+          {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
+        </div>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
@@ -201,7 +279,7 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
           isSaving ? (
             <Preloader className="mr-2" />
           ) : (
-            <button onClick={handleCreate} disabled={!isValid} className={`px-2 font-semibold ${isValid ? 'text-primary' : 'text-black/30 dark:text-white/30'}`}>
+            <button onClick={handleAddTapped} disabled={!isValid} className={`px-2 font-semibold ${isValid ? 'text-primary' : 'text-black/30 dark:text-white/30'}`}>
               Add
             </button>
           )
@@ -238,20 +316,8 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
         {isStaked && (
           <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
             If you miss the deadline, {formatStakeCents(stakeOption.cents)} is charged. Completing in time refunds it in full.
+            {canUseApplePay ? ' Tap Add to pay with Apple Pay.' : ' Tap Add to enter a card.'}
           </p>
-        )}
-
-        {isStaked && (
-          <div className="mt-4 px-4">
-            {canUseApplePay && paymentRequest && (
-              <div className="mb-3">
-                <PaymentRequestButtonElement options={{ paymentRequest }} />
-              </div>
-            )}
-            <div className="rounded-2xl border border-black/10 px-3 py-3 dark:border-white/15">
-              <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
-            </div>
-          </div>
         )}
 
         {/* Mirrors AddTaskSheet's Section("Deadline") — a segmented control of relative
