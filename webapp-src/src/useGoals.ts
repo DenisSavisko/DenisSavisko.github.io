@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CORE_DATA_ZONE_ID, GOAL_FIELDS, GOAL_RECORD_TYPE } from './cloudkitConfig';
 import { getCloudKitContainer } from './cloudkit';
 import type { CloudKitAuthState } from './useCloudKitAuth';
@@ -33,7 +33,11 @@ function fieldValue(record: CKRecord, key: string): unknown {
   return record.fields[key]?.value;
 }
 
-function mapRecord(record: CKRecord): Goal {
+/// Turns a raw CloudKit record (from a query, or a write's own response) into a Goal —
+/// exported so write helpers' callers (App.tsx, AddGoalSheet.tsx) can build one from
+/// createGoal/markGoalDone/etc.'s returned record for an optimistic update (see
+/// GoalsState/applyOverride below), without waiting on a re-fetch to see their own write.
+export function mapRecord(record: CKRecord): Goal {
   const deadline = fieldValue(record, GOAL_FIELDS.deadline);
   const completedDate = fieldValue(record, GOAL_FIELDS.completedDate);
   return {
@@ -53,10 +57,32 @@ function mapRecord(record: CKRecord): Goal {
   };
 }
 
-export function useGoals(authStatus: CloudKitAuthState['status']): [GoalsState, () => void] {
+/// goal: the known-correct Goal to show for this id (a create or update), or null to mean
+/// "treat this id as deleted." Expires after a while so a write we somehow got wrong doesn't
+/// override the server's view of the world forever — just long enough to bridge CloudKit's
+/// query-index lag (see applyOverride's own comment).
+interface Override {
+  goal: Goal | null;
+  expiresAt: number;
+}
+const OVERRIDE_TTL_MS = 20_000;
+
+export function useGoals(authStatus: CloudKitAuthState['status']): [GoalsState, () => void, (id: string, goal: Goal | null) => void] {
   const [state, setState] = useState<GoalsState>({ status: 'idle' });
   const [reloadToken, setReloadToken] = useState(0);
   const reload = useCallback(() => setReloadToken((t) => t + 1), []);
+  const [overrides, setOverrides] = useState<Record<string, Override>>({});
+
+  /// Call right after a successful write (create/update/delete) with the Goal it actually
+  /// produced — CloudKit's query index can lag several seconds behind a write that already
+  /// succeeded, so `performQuery` (what every reload/poll here runs) can keep returning the
+  /// *old* state for a goal for a little while after mark-done, delete, or create. Without
+  /// this, that lag reads as "my change didn't work" until a reload happens to land after the
+  /// index catches up. This makes the affected goal authoritative locally until it expires or
+  /// a later fetch confirms the server agrees, whichever comes first.
+  const applyOverride = useCallback((id: string, goal: Goal | null) => {
+    setOverrides((prev) => ({ ...prev, [id]: { goal, expiresAt: Date.now() + OVERRIDE_TTL_MS } }));
+  }, []);
 
   useEffect(() => {
     if (authStatus !== 'signed-in') {
@@ -119,7 +145,33 @@ export function useGoals(authStatus: CloudKitAuthState['status']): [GoalsState, 
     return () => clearInterval(interval);
   }, [authStatus, reload]);
 
-  return [state, reload];
+  // Applies any still-live overrides over whatever the last fetch returned — an override
+  // whose goal is non-null replaces (or, for a just-created goal the fetch doesn't know about
+  // yet, adds) that entry; null removes it (a just-deleted goal the fetch hasn't caught up to
+  // dropping yet). An expired override is just ignored, not actively cleaned up — harmless
+  // clutter in a small object for as long as this hook stays mounted.
+  const mergedState = useMemo((): GoalsState => {
+    if (state.status !== 'loaded') return state;
+    const now = Date.now();
+    const live = Object.entries(overrides).filter(([, o]) => o.expiresAt > now);
+    if (live.length === 0) return state;
+    const liveMap = new Map(live);
+    const seen = new Set<string>();
+    const merged: Goal[] = [];
+    for (const goal of state.goals) {
+      seen.add(goal.id);
+      const override = liveMap.get(goal.id);
+      if (override === undefined) merged.push(goal);
+      else if (override.goal) merged.push(override.goal);
+      // else: overridden as deleted — omitted
+    }
+    for (const [id, override] of liveMap) {
+      if (!seen.has(id) && override.goal) merged.push(override.goal);
+    }
+    return { status: 'loaded', goals: merged };
+  }, [state, overrides]);
+
+  return [mergedState, reload, applyOverride];
 }
 
 /// Mirrors GoalTask.status(asOf:) in MyMainGoals/GoalTask.swift.

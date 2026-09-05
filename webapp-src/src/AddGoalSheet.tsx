@@ -6,7 +6,7 @@ import { createGoal, getCloudKitContainer } from './cloudkit';
 import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
 import { createHold } from './staking';
-import { formatDeadline, formatStakeCents } from './useGoals';
+import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
 import { STAKE_OPTIONS, stripePromise, type StakeOptionId } from './stripeConfig';
 import type { ShareVerificationTarget } from './ShareVerificationSheet';
 
@@ -25,7 +25,15 @@ type DeadlineOptionId = (typeof DEADLINE_OPTIONS)[number]['id'];
 /// Mirrors AddTaskSheet on iOS. Wraps the form in <Elements> unconditionally (harmless when
 /// unstaked — useStripe()/useElements() are just unused then) so the same component can use
 /// Stripe's hooks without a conditional-provider/ref-lifting dance.
-export function AddGoalSheet({ opened, onClose, onCreated }: { opened: boolean; onClose: () => void; onCreated: () => void }) {
+export function AddGoalSheet({
+  opened,
+  onClose,
+  onCreated,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  onCreated: (goal: Goal) => void;
+}) {
   return (
     <Elements stripe={stripePromise}>
       <AddGoalForm opened={opened} onClose={onClose} onCreated={onCreated} />
@@ -33,7 +41,15 @@ export function AddGoalSheet({ opened, onClose, onCreated }: { opened: boolean; 
   );
 }
 
-function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose: () => void; onCreated: () => void }) {
+function AddGoalForm({
+  opened,
+  onClose,
+  onCreated,
+}: {
+  opened: boolean;
+  onClose: () => void;
+  onCreated: (goal: Goal) => void;
+}) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -99,13 +115,13 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
   /// required 3D Secure confirmation) has already succeeded.
   async function finishCreatingGoal(verificationToken: string | null, stake: { amountCents: number; paymentIntentId: string } | null) {
     const container = getCloudKitContainer();
-    await createGoal(container, {
+    const record = await createGoal(container, {
       title: latest.current.title.trim(),
       deadline: latest.current.deadline,
       verificationCode: verificationToken,
       stake,
     });
-    onCreated();
+    onCreated(mapRecord(record));
     close();
   }
 
@@ -242,7 +258,9 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
           }
           right={
             isSaving ? (
-              <Preloader className="mr-2" />
+              <div className="flex items-center justify-center px-2">
+              <Preloader />
+            </div>
             ) : (
               <button onClick={handlePayWithCard} className="px-2 font-semibold text-primary">
                 Pay {formatStakeCents(stakeOption.cents)}
@@ -277,7 +295,9 @@ function AddGoalForm({ opened, onClose, onCreated }: { opened: boolean; onClose:
         }
         right={
           isSaving ? (
-            <Preloader className="mr-2" />
+            <div className="flex items-center justify-center px-2">
+              <Preloader />
+            </div>
           ) : (
             <button onClick={handleAddTapped} disabled={!isValid} className={`px-2 font-semibold ${isValid ? 'text-primary' : 'text-black/30 dark:text-white/30'}`}>
               Add

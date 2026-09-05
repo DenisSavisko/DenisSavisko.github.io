@@ -57,12 +57,15 @@ export async function ownsGoalWithVerificationCode(container: CKContainer, token
 /// Shared by every "update a few fields on an existing goal" write — markGoalDone,
 /// markGoalVerified, updateGoalStakeStatus. Requires the record's current recordChangeTag
 /// (optimistic concurrency) — pass the one from the last read; a stale tag fails the save
-/// rather than silently overwriting a newer state.
+/// rather than silently overwriting a newer state. Returns the saved record (with a fresh
+/// recordChangeTag) — CloudKit's query index can lag several seconds behind a successful
+/// write, so callers use this to update local state immediately instead of waiting on a
+/// performQuery that might not show the change yet (see useGoals.ts's applyOverride).
 async function saveGoalFields(
   container: CKContainer,
   goal: { recordName: string; recordChangeTag: string },
   fields: Record<string, { value: unknown }>
-): Promise<void> {
+): Promise<CKRecord> {
   const response = await container.privateCloudDatabase.saveRecords(
     [
       {
@@ -77,12 +80,13 @@ async function saveGoalFields(
   if (response.hasErrors) {
     throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
   }
+  return response.records[0];
 }
 
 /// Mirrors TaskStore.markDone: sets isDone + completedDate. Fields are stored as Int(64), not
 /// booleans (confirmed against a real record) — 1/0, not true/false.
-export async function markGoalDone(container: CKContainer, goal: { recordName: string; recordChangeTag: string }): Promise<void> {
-  await saveGoalFields(container, goal, {
+export async function markGoalDone(container: CKContainer, goal: { recordName: string; recordChangeTag: string }): Promise<CKRecord> {
+  return saveGoalFields(container, goal, {
     [GOAL_FIELDS.isDone]: { value: 1 },
     [GOAL_FIELDS.completedDate]: { value: Date.now() },
   });
@@ -90,8 +94,8 @@ export async function markGoalDone(container: CKContainer, goal: { recordName: s
 
 /// Mirrors TaskStore.markVerified — flips isVerified once VerificationSync-equivalent
 /// (useBackgroundSync.ts) confirms the friend has confirmed.
-export async function markGoalVerified(container: CKContainer, goal: { recordName: string; recordChangeTag: string }): Promise<void> {
-  await saveGoalFields(container, goal, { [GOAL_FIELDS.isVerified]: { value: 1 } });
+export async function markGoalVerified(container: CKContainer, goal: { recordName: string; recordChangeTag: string }): Promise<CKRecord> {
+  return saveGoalFields(container, goal, { [GOAL_FIELDS.isVerified]: { value: 1 } });
 }
 
 /// Mirrors TaskStore.updateStakeStatus.
@@ -99,8 +103,8 @@ export async function updateGoalStakeStatus(
   container: CKContainer,
   goal: { recordName: string; recordChangeTag: string },
   status: string
-): Promise<void> {
-  await saveGoalFields(container, goal, { [GOAL_FIELDS.stakeStatus]: { value: status } });
+): Promise<CKRecord> {
+  return saveGoalFields(container, goal, { [GOAL_FIELDS.stakeStatus]: { value: status } });
 }
 
 /// Mirrors TaskStore.delete.
@@ -127,7 +131,7 @@ export async function createGoal(
     verificationCode: string | null;
     stake: { amountCents: number; paymentIntentId: string } | null;
   }
-): Promise<void> {
+): Promise<CKRecord> {
   const now = Date.now();
   const fields: Record<string, { value: unknown }> = {
     [GOAL_FIELDS.entityName]: { value: GOAL_ENTITY_NAME },
@@ -158,4 +162,5 @@ export async function createGoal(
   if (response.hasErrors) {
     throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
   }
+  return response.records[0];
 }

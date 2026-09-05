@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { App as KonstaApp, Block, Fab, Navbar, Page } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
-import { useGoals, sortedByTab, type Goal } from './useGoals';
+import { useGoals, sortedByTab, mapRecord, type Goal } from './useGoals';
 import { deleteGoal, getCloudKitContainer, markGoalDone } from './cloudkit';
 import { ensureSignedIn } from './supabase';
 import { releaseHold } from './staking';
@@ -62,7 +62,7 @@ export default function App() {
   }
 
   const authState = useCloudKitAuth();
-  const [goalsState, reloadGoals] = useGoals(authState.status);
+  const [goalsState, reloadGoals, applyGoalOverride] = useGoals(authState.status);
   useBackgroundSync(goalsState, reloadGoals);
 
   // Mirrors TaskStore.activeTasks/doneTasks/failedTasks — recomputed whenever the underlying
@@ -100,7 +100,12 @@ export default function App() {
     pendingCompletions.toggle(goal.id, async () => {
       try {
         const container = getCloudKitContainer();
-        await markGoalDone(container, goal);
+        const updated = await markGoalDone(container, goal);
+        // CloudKit's query index can lag several seconds behind a write that already
+        // succeeded — without this, the goal would sit showing as still-active until a
+        // reload happened to land after the index caught up (see useGoals.ts's
+        // applyOverride).
+        applyGoalOverride(goal.id, mapRecord(updated));
         if (goal.stripePaymentIntentId) {
           try {
             await ensureSignedIn();
@@ -128,6 +133,9 @@ export default function App() {
     pendingDeletions.start(goal.id, async () => {
       try {
         await deleteGoal(getCloudKitContainer(), goal.recordName);
+        // Same query-index lag as mark-done — without this the deleted goal would keep
+        // showing up until a reload happened to land after the index caught up.
+        applyGoalOverride(goal.id, null);
         reloadGoals();
       } catch (error) {
         window.alert(`Couldn't delete this goal: ${(error as Error).message}`);
@@ -234,7 +242,16 @@ export default function App() {
           long as the hash hasn't been cleared out from under it in the meantime. */}
       <VerifyModal token={isSignedIn ? token : null} authStatus={authState.status} onClose={closeVerifyModal} />
 
-      <AddGoalSheet opened={isAddSheetOpen} onClose={() => setIsAddSheetOpen(false)} onCreated={reloadGoals} />
+      <AddGoalSheet
+        opened={isAddSheetOpen}
+        onClose={() => setIsAddSheetOpen(false)}
+        onCreated={(goal) => {
+          // Same query-index lag as mark-done/delete — without this the new goal wouldn't
+          // show up until a reload happened to land after the index caught up.
+          applyGoalOverride(goal.id, goal);
+          reloadGoals();
+        }}
+      />
 
       <ShareVerificationSheet
         target={shareTarget}
