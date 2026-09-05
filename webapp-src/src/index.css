@@ -16,18 +16,21 @@ body {
   background: #efeff4;
 }
 
-/* Konsta's <App> sizes itself with min-h-screen (100vh). iOS Safari's 100vh is the height with
-   its address bar hidden, which is taller than what's actually visible whenever the bar is
-   showing — so the document itself became a little taller than the visible viewport and Safari
-   let it scroll (an empty scroll on a near-empty Goals tab, or a second, outer scroll stacked on
-   top of the Page's own inner one on Done/Failed). Pinning html/body to the dynamic viewport
-   height and disallowing document-level scrolling entirely means only Page's own overflow-auto
-   (see PageClasses.js) ever scrolls, on every browser — Mac Safari never showed this because its
-   viewport height is stable, so 100vh was already accurate there. */
-html,
-body {
-  height: 100dvh;
-  overflow: hidden;
+/* Konsta's <App> sizes itself with min-h-screen (100vh, see AppClasses.js) — but iOS Safari's
+   100vh is the height with its address bar hidden, taller than what's actually visible whenever
+   the bar is showing. That made the document a little taller than the visible viewport, and
+   Safari let it scroll (an empty scroll on a near-empty Goals tab, or a second, outer scroll
+   stacked on top of Page's own inner one on Done/Failed) — Mac Safari never showed this since its
+   viewport height is stable, so 100vh was already accurate there.
+   Capping k-app itself to the dynamic viewport height (rather than blocking scrolling on
+   html/body, tried first) fixes the actual mismatch without also disabling Safari's native
+   pull-to-refresh — that gesture is a rubber-band bounce of the document's own scroll, which an
+   `overflow: hidden` on html/body blocks outright regardless of whether anything below still
+   needs to scroll. k-app is `position: relative` with only an absolutely-positioned Page inside
+   (PageClasses.js), so Page's content can never grow k-app taller than this on its own — this
+   alone is enough to keep the document exactly viewport-sized in every case. */
+.k-app {
+  min-height: 100dvh;
 }
 
 /* Plain <button> has no default pointer cursor in browsers (unlike <a href>) — Konsta's own
