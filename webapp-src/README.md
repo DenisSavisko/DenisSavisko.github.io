@@ -21,6 +21,25 @@ like `TaskStore.activeTasks`/`doneTasks`/`failedTasks`). Sign in with your Apple
 JS to see your goals — one shared button in the navbar (`AppleSignInButton.tsx`), not
 per-tab, since CloudKit JS only supports one such element on the page (see its comment).
 
+**Fully gated by sign-in**: nothing (tabs, create, the `+` button, `VerifyModal`) is usable
+until `useCloudKitAuth`'s status is `'signed-in'` — `App.tsx` renders only the sign-in prompt
+otherwise. A `#verify/<token>` hash present at sign-in time is deliberately left untouched
+(never cleared just because sign-in hasn't happened) so the confirm sheet opens itself the
+moment sign-in completes, without the link having to be re-opened.
+
+The tab bar is a hand-rolled floating "Liquid Glass" pill (`GlassTabbar.tsx`), not Konsta's
+own `<Tabbar>`/`<TabbarLink>` — those render the previous-generation edge-to-edge bar, and
+Konsta doesn't expose a floating-glass variant. It composes Konsta's `<Glass>` primitive
+(translucent blur) with plain buttons instead, with `highlight={false}` — see that file's
+comment for why (a real, since-fixed bug, not a stylistic choice).
+
+`useGoals.ts`'s `applyOverride`: CloudKit's query index can lag several seconds behind a
+write that already succeeded, so `performQuery` right after a create/mark-done/delete can
+still return the pre-write state. Every write helper in `cloudkit.ts` returns the record it
+actually produced, and callers (`App.tsx`, `AddGoalSheet.tsx`) feed that straight into a
+short-lived (20s) local override layered over fetched state, so the UI reflects a write
+immediately instead of waiting for CloudKit's index to catch up.
+
 **Writable**: mark done (`ActiveTab.tsx`'s circle tap → `markGoalDone`, releasing the Stripe
 hold via `staking.ts`'s `releaseHold` for staked goals, mirrors `ActiveListView.toggleDone`),
 delete (trash icon on every tab, same `isDeletable`/"still held" gating as iOS, mirrors
@@ -38,9 +57,19 @@ calls the same `create-hold` edge function iOS uses; a card that comes back `req
 written to CloudKit after the hold is confirmed (`createGoal`'s comment), same
 "never insert a staked goal locally on a hope the payment will go through" rule as
 `TaskStore.addStakedTask`. Verified end-to-end against the live (test-mode) Stripe/Supabase
-functions via curl with Stripe's `pm_card_visa` test token before wiring into the UI — the
-actual browser UI (card form rendering, the Apple Pay button appearing) hasn't been visually
-tested, since there's no browser tooling available in this environment.
+functions via curl with Stripe's `pm_card_visa` test token, and since then against the real
+browser UI on iPhone Safari (card entry, the Apple Pay sheet, 3D Secure) — there's no browser
+tooling in *this* environment, so any future UI verification here still has to go through the
+user rather than a screenshot/click loop.
+
+**Edge Functions need CORS added by hand**: unlike Supabase RPCs (`supabase.rpc()`,
+PostgREST, CORS-enabled by default), a `supabase.functions.invoke()` call needs the target
+function to handle `OPTIONS` and set CORS headers itself — `create-hold`/`release-hold`
+originally only had to work from native iOS (no CORS needed at all) and broke silently
+("Failed to send a request to edge function") the first time this web client called them.
+See `supabase/functions/_shared/cors.ts` in the `MyMainGoals` repo — every Edge Function this
+web client calls needs that same `OPTIONS` short-circuit + headers-on-every-response
+treatment, including any new one added later.
 
 **Still out of scope**: the ads-driven release/verification-bypass flows (AdMob, iOS-only —
 no ad SDK or ad revenue path exists on web). The floating `+` button disables itself once 3
@@ -71,6 +100,28 @@ as of this writing — `cloudkitConfig.ts` has a real token and `CD_GoalTask`/`r
 confirmed against the actual Development schema. Revisit this section if either the Goals tab
 or the self-confirm check start failing again (e.g. after rotating the token, or if the schema
 changes).
+
+## iOS Safari quirks fixed here (don't reintroduce)
+
+- **Phantom/double scroll**: Konsta's `<App>` sizes itself with `min-h-screen` (100vh, see
+  `AppClasses.js`) — iOS Safari's `100vh` is the height with its address bar hidden, taller
+  than what's actually visible whenever the bar is showing. `index.css` caps `.k-app` itself
+  to `min-height: 100dvh` (overriding that utility class — confirmed to win the cascade since
+  it's declared after Tailwind's own utility layer in the same file) rather than blocking
+  scroll on `html`/`body` outright — an earlier attempt did that and broke Safari's native
+  pull-to-refresh gesture as a side effect, since that's a rubber-band bounce of the
+  document's own scroll.
+- **Tab bar icon/label fading to white on very fast repeated taps**: not a CSS transition
+  issue (a first attempt assumed so and was wrong) — it's Konsta's `<Glass>` iOS hover
+  highlight (`use-ios-highlight.js`) creating a new translucent overlay span on every
+  `pointerenter` without checking whether a previous one is still mid-removal. Fast alternating
+  taps fire `pointerenter` faster than each overlay fades out, so they visually stack. Fixed by
+  passing `highlight={false}` to `GlassTabbar.tsx`'s `<Glass>` — not needed on a nav bar anyway.
+- **Tailwind + template literals**: a `className` template literal that glues a utility class
+  directly against a `${...}` interpolation with no space between them (e.g. `` `!w-16${cond ? '...' : ''}` ``)
+  can make Tailwind's source scanner silently drop that class — always leave a literal space
+  before an interpolation, and verify a suspicious override actually landed by grepping the
+  built CSS (`grep -o '!w-16{[^}]*}' webapp/assets/*.css`) rather than trusting it visually.
 
 ## CloudKit JS setup (required before the Goals tab works)
 
