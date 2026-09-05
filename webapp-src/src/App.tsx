@@ -247,6 +247,20 @@ export default function App() {
           // show up until a reload happened to land after the index caught up.
           applyGoalOverride(goal.id, goal);
           reloadGoals();
+          // Mirrors AddTaskSheet on iOS: a verification-gated goal goes straight from
+          // creation into the share prompt, same as tapping done on one still unverified
+          // (handleToggleDone) — just with wording for "you just made this" rather than
+          // "you're trying to finish this."
+          if (goal.requiresVerification && goal.verificationCode) {
+            setShareTarget({
+              title: goal.title,
+              deadline: goal.deadline,
+              stakeAmountCents: goal.stakeAmountCents,
+              token: goal.verificationCode,
+              headline: 'Share with your friend',
+              message: `They'll need to open the link and confirm "${goal.title}" before it can be marked done.`,
+            });
+          }
         }}
       />
 
