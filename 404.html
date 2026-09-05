@@ -29,6 +29,7 @@
     var link = document.getElementById('web-link');
     link.href = '/webapp/#verify/' + match[1];
     link.hidden = false;
+    document.getElementById('web-link-note').hidden = false;
   });
 </script>
 <style>
@@ -36,7 +37,6 @@
   h1 { font-size: 20px; margin-bottom: 8px; }
   p.muted { color: #666; font-size: 14px; }
   a.app-link { display: inline-block; margin-top: 24px; padding: 14px 28px; border-radius: 12px; background: #d64545; color: white; text-decoration: none; font-weight: 600; }
-  a.web-link { display: block; margin-top: 16px; font-size: 14px; color: #666; }
 </style>
 </head>
 <body>
@@ -54,8 +54,12 @@
     separate page that establishes its own session before reading anything.
   -->
   <h1>Get MyMainGoals</h1>
-  <p class="muted">Install the app to see what you were asked to confirm.</p>
-  <a class="app-link" href="https://apps.apple.com/app/id0000000000">Get the app →</a>
-  <a class="web-link" id="web-link" href="#" hidden>or try the web version (requires signing in with your Apple ID)</a>
+  <p class="muted">See what you were asked to confirm.</p>
+  <!-- Not approved by Apple yet, so apps.apple.com/app/id0000000000 is a dead link — hidden
+       until there's a real listing (see the app-id TODO above). Only "try web version"
+       shows for now. -->
+  <a class="app-link" href="https://apps.apple.com/app/id0000000000" hidden>Get the app →</a>
+  <a class="app-link" id="web-link" href="#" hidden>Try the web version →</a>
+  <p class="muted" id="web-link-note" hidden>Requires signing in with your Apple ID.</p>
 </body>
 </html>

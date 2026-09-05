@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
-import { List, ListItem, Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
+import { Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
 import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
@@ -355,17 +355,17 @@ function AddGoalForm({
         <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">Due around {formatDeadline(deadline)}</p>
 
         {/* Mirrors AddTaskSheet's Section("Verification") — only ever shown once staked,
-            same as iOS's `if isStaked { Toggle(...) }`. */}
+            same as iOS's `if isStaked { Toggle(...) }`. Plain row, not Konsta's List/ListItem
+            — same reasoning as Title above: List's own insetIos margin plus ListItem's own
+            internal padding double up to a ~32px left inset, out of step with every other
+            field's flat px-4. */}
         {isStaked && (
           <>
             <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Verification</p>
-            <List strongIos insetIos>
-              <ListItem
-                label
-                title="Require confirmation from someone else"
-                after={<Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />}
-              />
-            </List>
+            <div className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3 dark:border-white/15">
+              <span className="text-base text-black dark:text-white">Require confirmation from someone else</span>
+              <Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />
+            </div>
             {requiresVerification && (
               <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
                 Anyone with the link can see this goal's title and stake, and can confirm it for you. Only share it with someone
