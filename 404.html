@@ -37,8 +37,8 @@
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 480px; margin: 80px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.6; text-align: center; }
   h1 { font-size: 20px; margin-bottom: 8px; }
   p.muted { color: #666; font-size: 14px; }
-  a.app-link { display: inline-block; margin-top: 24px; padding: 14px 28px; border-radius: 12px; background: #d64545; color: white; text-decoration: none; font-weight: 600; }
-  .app-link-soon { display: inline-block; margin-top: 24px; margin-left: 8px; padding: 14px 28px; border-radius: 12px; background: #e5e5ea; color: #999; font-weight: 600; }
+  a.app-link { display: block; width: fit-content; margin: 12px auto 0; padding: 14px 28px; border-radius: 12px; background: #d64545; color: white; text-decoration: none; font-weight: 600; }
+  .app-link-soon { display: block; width: fit-content; margin: 24px auto 0; padding: 14px 28px; border-radius: 12px; background: #e5e5ea; color: #999; font-weight: 600; }
   /* [hidden] is only display:none via the browser's default stylesheet — a same-specificity
      author rule that also sets `display` (a.app-link above, in this exact file) overrides it,
      so an element can carry the hidden attribute and still render. Confirmed the hard way: the
@@ -69,8 +69,8 @@
        anywhere, rather than relying on a hidden/disabled treatment that's one CSS rule away
        from silently becoming clickable again (see the [hidden] comment above). Swap back to
        a real link once there's an App Store id. -->
-  <a class="app-link" id="web-link" href="#" hidden>Try the web version →</a>
   <span class="app-link-soon">Get the app (soon)</span>
-  <p class="muted" id="web-link-note" hidden>Requires signing in with your Apple ID.</p>
+  <a class="app-link" id="web-link" href="#" hidden>Try the web version →</a>
+  <p class="muted" id="web-link-note" hidden style="margin-top: 8px;">Requires signing in with your Apple ID.</p>
 </body>
 </html>
