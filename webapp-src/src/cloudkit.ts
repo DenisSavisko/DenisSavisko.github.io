@@ -54,13 +54,14 @@ export async function ownsGoalWithVerificationCode(container: CKContainer, token
   return records.some((record) => record.fields[GOAL_FIELDS.verificationCode]?.value === token);
 }
 
-/// Mirrors TaskStore.markDone: sets isDone + completedDate on the existing record. Fields are
-/// stored as Int(64), not booleans (confirmed against a real record) — 1/0, not true/false.
-/// Requires the record's current recordChangeTag (optimistic concurrency) — pass the one from
-/// the last read; a stale tag fails the save rather than silently overwriting a newer state.
-export async function markGoalDone(
+/// Shared by every "update a few fields on an existing goal" write — markGoalDone,
+/// markGoalVerified, updateGoalStakeStatus. Requires the record's current recordChangeTag
+/// (optimistic concurrency) — pass the one from the last read; a stale tag fails the save
+/// rather than silently overwriting a newer state.
+async function saveGoalFields(
   container: CKContainer,
-  goal: { recordName: string; recordChangeTag: string }
+  goal: { recordName: string; recordChangeTag: string },
+  fields: Record<string, { value: unknown }>
 ): Promise<void> {
   const response = await container.privateCloudDatabase.saveRecords(
     [
@@ -68,10 +69,7 @@ export async function markGoalDone(
         recordType: GOAL_RECORD_TYPE,
         recordName: goal.recordName,
         recordChangeTag: goal.recordChangeTag,
-        fields: {
-          [GOAL_FIELDS.isDone]: { value: 1 },
-          [GOAL_FIELDS.completedDate]: { value: Date.now() },
-        },
+        fields,
       },
     ],
     zoneOptions()
@@ -79,6 +77,30 @@ export async function markGoalDone(
   if (response.hasErrors) {
     throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
   }
+}
+
+/// Mirrors TaskStore.markDone: sets isDone + completedDate. Fields are stored as Int(64), not
+/// booleans (confirmed against a real record) — 1/0, not true/false.
+export async function markGoalDone(container: CKContainer, goal: { recordName: string; recordChangeTag: string }): Promise<void> {
+  await saveGoalFields(container, goal, {
+    [GOAL_FIELDS.isDone]: { value: 1 },
+    [GOAL_FIELDS.completedDate]: { value: Date.now() },
+  });
+}
+
+/// Mirrors TaskStore.markVerified — flips isVerified once VerificationSync-equivalent
+/// (useBackgroundSync.ts) confirms the friend has confirmed.
+export async function markGoalVerified(container: CKContainer, goal: { recordName: string; recordChangeTag: string }): Promise<void> {
+  await saveGoalFields(container, goal, { [GOAL_FIELDS.isVerified]: { value: 1 } });
+}
+
+/// Mirrors TaskStore.updateStakeStatus.
+export async function updateGoalStakeStatus(
+  container: CKContainer,
+  goal: { recordName: string; recordChangeTag: string },
+  status: string
+): Promise<void> {
+  await saveGoalFields(container, goal, { [GOAL_FIELDS.stakeStatus]: { value: status } });
 }
 
 /// Mirrors TaskStore.delete.

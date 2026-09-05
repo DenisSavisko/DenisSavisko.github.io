@@ -3,6 +3,7 @@ import { App as KonstaApp, Block, Fab, Navbar, Page } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
 import { useGoals, sortedByTab, type Goal } from './useGoals';
 import { deleteGoal, getCloudKitContainer, markGoalDone } from './cloudkit';
+import { ensureSignedIn } from './supabase';
 import { releaseHold } from './staking';
 import { ActiveTab } from './ActiveTab';
 import { DoneTab } from './DoneTab';
@@ -12,6 +13,7 @@ import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
 import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVerificationSheet';
 import { usePendingAction } from './usePendingAction';
+import { useBackgroundSync } from './useBackgroundSync';
 import { GlassTabbar } from './GlassTabbar';
 import { ChecklistIcon, CheckCircleIcon, PlusIcon, XCircleIcon } from './icons';
 
@@ -61,6 +63,7 @@ export default function App() {
 
   const authState = useCloudKitAuth();
   const [goalsState, reloadGoals] = useGoals(authState.status);
+  useBackgroundSync(goalsState, reloadGoals);
 
   // Mirrors TaskStore.activeTasks/doneTasks/failedTasks — recomputed whenever the underlying
   // goals list changes, not on every render (the "now" cutoff only needs to be roughly fresh).
@@ -100,10 +103,11 @@ export default function App() {
         await markGoalDone(container, goal);
         if (goal.stripePaymentIntentId) {
           try {
+            await ensureSignedIn();
             await releaseHold(goal.stripePaymentIntentId);
           } catch {
-            // Left as "held" — iOS's StakeSync retries this on next foreground; there's no
-            // equivalent background retry on web, so it just stays held until revisited.
+            // Left as "held" — useBackgroundSync retries this on the next refresh cycle,
+            // mirroring StakeSync.retryPendingReleases on iOS.
           }
         }
         reloadGoals();
