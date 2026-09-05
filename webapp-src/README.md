@@ -71,8 +71,9 @@ See `supabase/functions/_shared/cors.ts` in the `MyMainGoals` repo — every Edg
 web client calls needs that same `OPTIONS` short-circuit + headers-on-every-response
 treatment, including any new one added later.
 
-**Still out of scope**: the ads-driven release/verification-bypass flows (AdMob, iOS-only —
-no ad SDK or ad revenue path exists on web). The floating `+` button disables itself once 3
+**Still out of scope**: the ads-driven release/verification-bypass flows — planned but not
+built, see `ADS_RELEASE_PLAN.md` (AdMob is iOS-only; web's path is Google's Ad Placement API
+instead, needing its own AdSense account/setup). The floating `+` button disables itself once 3
 active goals exist, matching `TaskStore.canAddTask`, rather than opening a sheet that then
 explains why it can't do anything.
 
