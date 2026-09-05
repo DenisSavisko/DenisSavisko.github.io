@@ -13,6 +13,20 @@ body {
   background: #e5e5ea;
 }
 
+/* Konsta's <App> sizes itself with min-h-screen (100vh). iOS Safari's 100vh is the height with
+   its address bar hidden, which is taller than what's actually visible whenever the bar is
+   showing — so the document itself became a little taller than the visible viewport and Safari
+   let it scroll (an empty scroll on a near-empty Goals tab, or a second, outer scroll stacked on
+   top of the Page's own inner one on Done/Failed). Pinning html/body to the dynamic viewport
+   height and disallowing document-level scrolling entirely means only Page's own overflow-auto
+   (see PageClasses.js) ever scrolls, on every browser — Mac Safari never showed this because its
+   viewport height is stable, so 100vh was already accurate there. */
+html,
+body {
+  height: 100dvh;
+  overflow: hidden;
+}
+
 /* Plain <button> has no default pointer cursor in browsers (unlike <a href>) — Konsta's own
    button-shaped components (Fab, ListItem as a link, etc.) and every hand-rolled one here
    (mark-done circle, delete trash icon, tab bar, sheet Cancel/Add) are <button>s, so without
