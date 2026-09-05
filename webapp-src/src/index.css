@@ -8,9 +8,12 @@
 }
 
 /* The app itself is capped to --k-app-max-w and centered; this fills the rest of a wide
-   window so the cap doesn't look like an accident. */
+   window. Matches Konsta's own light-theme Page background (bg-ios-light-surface, see
+   node_modules/konsta/styles/colors.css) rather than a distinct letterbox color, so the
+   column has no visible seam against the page around it now that it's no longer a
+   rounded/shadowed card. */
 body {
-  background: #e5e5ea;
+  background: #efeff4;
 }
 
 /* Konsta's <App> sizes itself with min-h-screen (100vh). iOS Safari's 100vh is the height with

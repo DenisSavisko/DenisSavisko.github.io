@@ -145,13 +145,8 @@ export default function App() {
 
   const isSignedIn = authState.status === 'signed-in';
 
-  // rounded-[48px]/overflow-hidden on KonstaApp itself (not Page) so the clip applies to the
-  // whole phone-shaped column, top and bottom corners both — Page fills it via absolute
-  // inset-0 and doesn't itself grow this box, so both corners stay on screen together at all
-  // times, not just whichever end you've scrolled to. 48px is a rough scale-up of iPhone's
-  // actual screen corner radius (~44-55px on real devices) for our wider 480px column.
   return (
-    <KonstaApp theme="ios" dark={false} safeAreas className="mx-auto max-w-(--k-app-max-w) overflow-hidden rounded-[48px] shadow-2xl">
+    <KonstaApp theme="ios" dark={false} safeAreas className="mx-auto max-w-(--k-app-max-w)">
       <Page ref={pageRef}>
         <Navbar title={isSignedIn ? TAB_TITLES[tab] : 'MyMainGoals'} />
         <AppleSignInButton />
@@ -209,11 +204,13 @@ export default function App() {
             <div className="pointer-events-none fixed inset-x-0 bottom-32 z-10 mx-auto flex max-w-(--k-app-max-w) justify-end pr-4">
               {/* Fab renders as an <a> by default, which has no native `disabled` — matches
                   ContentView's `.disabled(!store.canAddTask)` visually/interactively by hand
-                  instead. */}
+                  instead. Sized up from Konsta's default 44px (h-11/w-11) — !h-/!w- since
+                  those are the same specificity as Fab's own base classes and cascade order
+                  between the two isn't something to rely on. */}
               <Fab
-                className={`pointer-events-auto${active.length >= 3 ? ' opacity-40' : ''}`}
+                className={`pointer-events-auto !h-16 !w-16${active.length >= 3 ? ' opacity-40' : ''}`}
                 aria-disabled={active.length >= 3}
-                icon={<PlusIcon className="h-5 w-5" />}
+                icon={<PlusIcon className="h-7 w-7" />}
                 onClick={active.length >= 3 ? undefined : () => setIsAddSheetOpen(true)}
               />
             </div>
