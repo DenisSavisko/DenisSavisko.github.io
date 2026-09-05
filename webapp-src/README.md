@@ -150,6 +150,15 @@ changes).
    omitted `zoneID` silently defaults to `"_defaultZone"` (empty) rather than erroring — every
    query/save/delete against `GOAL_RECORD_TYPE` must pass this zone explicitly, or it'll look
    like there's simply no data.
+
+   That zone only exists in a given user's private database once *something* has created it —
+   normally SwiftData's automatic CloudKit mirroring, the first time the iOS app runs signed
+   into that iCloud account. Anyone who's only ever used the web app (a friend confirming a
+   verification link, say, signed in with their own Apple ID) has never had that happen, and
+   every CloudKit call failed for them with "Zone does not exist" — not just loading goals, but
+   creating one too. `cloudkit.ts`'s `ensureZoneExists` (called at the top of every query/save/
+   delete) fixes this by creating the zone itself via `saveRecordZones` if needed — a no-op
+   success if it's already there, so it's safe to call unconditionally.
 5. **API Access tab**: enable Web Services for this container and generate a Web Services
    API Token. Paste it into `CLOUDKIT_API_TOKEN` in `cloudkitConfig.ts`.
 6. **Allowed origins** (same API Access area, Sign-in with Apple ID / CORS config for

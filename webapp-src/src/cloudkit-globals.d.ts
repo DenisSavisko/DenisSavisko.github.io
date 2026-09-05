@@ -53,6 +53,12 @@ interface CKSaveResponse {
   records: CKRecord[];
 }
 
+interface CKZonesResponse {
+  hasErrors: boolean;
+  errors?: Array<{ reason: string }>;
+  zones: Array<{ zoneID: CKZoneID }>;
+}
+
 interface CKDatabase {
   /// Second argument is required for anything Core Data/SwiftData-synced — without an
   /// explicit zoneID, CloudKit JS defaults to "_defaultZone", not Core Data's real custom
@@ -71,4 +77,8 @@ interface CKDatabase {
     options?: { zoneID?: CKZoneID }
   ): Promise<CKSaveResponse>;
   deleteRecords(recordNames: string[], options?: { zoneID?: CKZoneID }): Promise<CKSaveResponse>;
+  /// Creating a zone that already exists is a no-op success, not an error (same idempotent
+  /// semantics as the native CloudKit SDK) — safe to call unconditionally. Confirmed against
+  /// the actual served cloudkit.js source: Database#saveRecordZones(zones).
+  saveRecordZones(zones: Array<{ zoneID: CKZoneID }>): Promise<CKZonesResponse>;
 }

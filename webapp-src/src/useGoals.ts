@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CORE_DATA_ZONE_ID, GOAL_FIELDS, GOAL_RECORD_TYPE } from './cloudkitConfig';
-import { getCloudKitContainer } from './cloudkit';
+import { ensureZoneExists, getCloudKitContainer } from './cloudkit';
 import type { CloudKitAuthState } from './useCloudKitAuth';
 
 export type GoalStatus = 'active' | 'done' | 'failed';
@@ -99,6 +99,10 @@ export function useGoals(authStatus: CloudKitAuthState['status']): [GoalsState, 
     (async () => {
       try {
         const container = getCloudKitContainer();
+        // A first-time web-only user (never installed iOS, so SwiftData's automatic CloudKit
+        // mirroring never created this zone in their own private database) hit this as
+        // "Couldn't load goals: Zone does not exist" — see ensureZoneExists's own comment.
+        await ensureZoneExists(container);
         const response = await container.privateCloudDatabase.performQuery(
           { recordType: GOAL_RECORD_TYPE },
           { zoneID: CORE_DATA_ZONE_ID }

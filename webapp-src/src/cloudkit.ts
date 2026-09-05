@@ -36,7 +36,32 @@ function zoneOptions() {
   return { zoneID: CORE_DATA_ZONE_ID };
 }
 
+/// SwiftData's automatic CloudKit mirroring creates `com.apple.coredata.cloudkit.zone` itself
+/// on a device's first sync — every query/save/delete here has always assumed that already
+/// happened. It hasn't for anyone who's only ever used the web app: a friend confirming a
+/// verification link, signed in with their own Apple ID, has a private database that has
+/// *never* had this zone created, and every CloudKit call below fails with "Zone does not
+/// exist" — not just loading goals, but creating one too. Creating a zone that already exists
+/// is a no-op success (see saveRecordZones's own comment), so this is safe to call before
+/// every entry point unconditionally; cached per container so it only actually costs one
+/// network round trip.
+const zoneEnsured = new WeakMap<CKContainer, Promise<void>>();
+export function ensureZoneExists(container: CKContainer): Promise<void> {
+  let promise = zoneEnsured.get(container);
+  if (!promise) {
+    promise = (async () => {
+      const response = await container.privateCloudDatabase.saveRecordZones([zoneOptions()]);
+      if (response.hasErrors) {
+        throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
+      }
+    })();
+    zoneEnsured.set(container, promise);
+  }
+  return promise;
+}
+
 async function queryAllGoals(container: CKContainer): Promise<CKRecord[]> {
+  await ensureZoneExists(container);
   const response = await container.privateCloudDatabase.performQuery({ recordType: GOAL_RECORD_TYPE }, zoneOptions());
   if (response.hasErrors) {
     throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
@@ -66,6 +91,7 @@ async function saveGoalFields(
   goal: { recordName: string; recordChangeTag: string },
   fields: Record<string, { value: unknown }>
 ): Promise<CKRecord> {
+  await ensureZoneExists(container);
   const response = await container.privateCloudDatabase.saveRecords(
     [
       {
@@ -109,6 +135,7 @@ export async function updateGoalStakeStatus(
 
 /// Mirrors TaskStore.delete.
 export async function deleteGoal(container: CKContainer, recordName: string): Promise<void> {
+  await ensureZoneExists(container);
   const response = await container.privateCloudDatabase.deleteRecords([recordName], zoneOptions());
   if (response.hasErrors) {
     throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
@@ -132,6 +159,7 @@ export async function createGoal(
     stake: { amountCents: number; paymentIntentId: string } | null;
   }
 ): Promise<CKRecord> {
+  await ensureZoneExists(container);
   const now = Date.now();
   const fields: Record<string, { value: unknown }> = {
     [GOAL_FIELDS.entityName]: { value: GOAL_ENTITY_NAME },
