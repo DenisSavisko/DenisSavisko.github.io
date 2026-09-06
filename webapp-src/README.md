@@ -140,12 +140,16 @@ changes).
   own cookie format byte for byte (bare hostname, empty `path=`) — writing `path=/` instead
   would risk two same-named cookies at different paths, and cloudkit.js's reader takes
   whichever `document.cookie` lists first.
-- **Don't add a PWA manifest with `display: standalone` without testing sign-in first**: it
-  looks like the natural fix for the above (iOS 17+ Home Screen apps are exempt from the ITP
-  purge entirely), but CloudKit JS signs in via `window.open` + `postMessage` back to
-  `window.opener`, not a redirect. A cross-origin popup from an iOS standalone web app can
-  open in Safari with no opener relationship, which would hang sign-in forever with no way
-  out. Verify on a real device before shipping a manifest.
+- **A PWA manifest is not the fix for the above** — and the reason isn't the one you'd guess.
+  CloudKit JS signs in via `window.open` + `postMessage` back to `window.opener` rather than a
+  redirect, so the theory was that a cross-origin popup from a standalone web app might open
+  in Safari with no opener and hang sign-in. **That's been disproven in practice**: iOS 26/27's
+  Add to Home Screen has an "Open as Web App" toggle that's on by default, so this app has
+  been running standalone on the user's phone all along, and sign-in works there.
+  The real conclusion is the opposite one: standalone mode is *already* in effect, and the
+  session was still expiring — so a manifest would change nothing about auth lifetime. It's
+  worth adding only as polish (a proper app name, icon, and theme colour, and standalone
+  regardless of that toggle), never as an auth fix.
 - **Tailwind + template literals**: a `className` template literal that glues a utility class
   directly against a `${...}` interpolation with no space between them (e.g. `` `!w-16${cond ? '...' : ''}` ``)
   can make Tailwind's source scanner silently drop that class — always leave a literal space
