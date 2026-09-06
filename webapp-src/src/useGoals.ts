@@ -21,6 +21,11 @@ export interface Goal {
   requiresVerification: boolean;
   verificationCode: string | null;
   isVerified: boolean;
+  /// The two ad counters (see adsConfig.ts). Separate on purpose, exactly as on iOS: they
+  /// gate different things (a held stake past its deadline vs. a still-gated goal's own
+  /// owner unlocking Done), so progress toward one never counts toward the other.
+  adsWatchedForRelease: number;
+  adsWatchedForVerificationBypass: number;
 }
 
 export type GoalsState =
@@ -54,6 +59,10 @@ export function mapRecord(record: CKRecord): Goal {
     requiresVerification: Boolean(fieldValue(record, GOAL_FIELDS.requiresVerification)),
     verificationCode: (fieldValue(record, GOAL_FIELDS.verificationCode) as string | null) || null,
     isVerified: Boolean(fieldValue(record, GOAL_FIELDS.isVerified)),
+    // Absent on any record written before these fields existed — GoalTask's own Swift
+    // defaults are 0 too, so a missing field means "none watched", never unknown.
+    adsWatchedForRelease: Number(fieldValue(record, GOAL_FIELDS.adsWatchedForRelease) ?? 0),
+    adsWatchedForVerificationBypass: Number(fieldValue(record, GOAL_FIELDS.adsWatchedForVerificationBypass) ?? 0),
   };
 }
 

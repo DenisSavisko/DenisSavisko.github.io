@@ -71,11 +71,21 @@ See `supabase/functions/_shared/cors.ts` in the `MyMainGoals` repo — every Edg
 web client calls needs that same `OPTIONS` short-circuit + headers-on-every-response
 treatment, including any new one added later.
 
-**Still out of scope**: the ads-driven release/verification-bypass flows — planned but not
-built, see `ADS_RELEASE_PLAN.md` (AdMob is iOS-only; web's path is Google's Ad Placement API
-instead, needing its own AdSense account/setup). The floating `+` button disables itself once 3
-active goals exist, matching `TaskStore.canAddTask`, rather than opening a sheet that then
-explains why it can't do anything.
+**Ads** (`adsConfig.ts`, `useRewardedAd.ts`): both iOS ad flows are mirrored — watch ads to
+release a held stake (`FailedTab.tsx`, mirrors `FailedTaskRow.adReleaseSection`) and the goal
+owner's own watch-ads-to-unlock-Done bypass (`VerifyModal.tsx`, mirrors
+`VerifyGoalView.selfConfirmBypassSection`). AdMob is mobile-only, so web uses Google's **Ad
+Placement API** (`adsbygoogle.js`, `type: 'reward'`) instead — see `ADS_RELEASE_PLAN.md`.
+Web's counts are 20 and 20, deliberately *not* tied to iOS's (2 and 10); each platform's
+constants are independent. Until an AdSense publisher id exists (see the setup section
+below), `adMode()` returns `'simulated'` in dev — a `confirm()` dialog stands in for the ad so
+the counters/threshold/release path works end to end — and `'unavailable'` in production,
+which surfaces as "No ad is available right now." That's a designed outcome, not a bug: ads
+are a bonus escape hatch here, never a required path, and web rewarded-ad fill is expected to
+be poor for a small non-game site.
+
+The floating `+` button disables itself once 3 active goals exist, matching
+`TaskStore.canAddTask`, rather than opening a sheet that then explains why it can't do anything.
 
 Mark-done and delete both go through `usePendingAction.ts`, mirroring iOS's `PendingAction` —
 a few seconds to undo (tap to cancel) before the write actually fires.
@@ -92,9 +102,10 @@ backed by a real CloudKit query instead of a local device store.
 — tab focus, the 20s poll) mirrors three iOS foreground tasks that would otherwise only ever
 happen on a full relaunch: `VerificationSync.syncPendingVerifications` (a friend confirming
 elsewhere never reached a web-only goal owner without this), `StakeSync.retryPendingReleases`
-(a release-hold call that didn't confirm the first time), and `StakeSync.syncHeldStatuses`
-(the expiry cron capturing a stake with no client call at all, for a goal staked on iOS and
-viewed on web).
+(a release-hold call that didn't confirm the first time — either after mark-done or after the
+last release ad, mirroring `TaskStore.tasksPendingRelease`'s two clauses), and
+`StakeSync.syncHeldStatuses` (the expiry cron capturing a stake with no client call at all,
+for a goal staked on iOS and viewed on web).
 
 The manual CloudKit Dashboard steps below (API token, schema check, queryable index) are done
 as of this writing — `cloudkitConfig.ts` has a real token and `CD_GoalTask`/`recordName` are
@@ -168,3 +179,30 @@ changes).
 
 None of the above can be scripted — it's all manual configuration in Apple's web dashboard
 tied to the developer account.
+
+## AdSense setup (required before the ad flows do anything in production)
+
+Same category as the CloudKit steps above: all manual, none of it scriptable. The publisher
+id and `ads.txt` are done; site review and H5 Games Ads are still pending. Until those land,
+ad requests simply go unfilled and the buttons show "No ad is available right now" — nothing
+else in the app is affected, since ads are a bonus escape hatch and never a required path.
+
+1. ✅ **Publisher id**: `ca-pub-4389491745714720`, already wired into `ADSENSE_CLIENT_ID` in
+   `adsConfig.ts`. That single value is the switch — `adMode()` is `'live'` now. There's no
+   ad-unit id to wire up: this API keys off placement *names* (`AD_PLACEMENTS`), not per-unit
+   ids the way AdMob does on iOS. Confirmed to be the **same publisher account as AdMob/iOS**
+   (`AdsConfig.rewardedAdUnitID`'s `ca-app-pub-4389491745714720`), not a second one.
+2. ✅ **`ads.txt`** at the repo root, served at `mymaingoals.app/ads.txt`, same publisher
+   number as the existing `app-ads.txt`. The two are not interchangeable: `app-ads.txt` is
+   read for the AdMob/iOS side, `ads.txt` for web inventory. It doubles as the AdSense
+   site-ownership verification method (chosen over the code snippet so no Google script tag
+   has to go on every page of the static site).
+3. ⏳ **Site review**: `mymaingoals.app` added under AdSense → Sites and approved. Days to
+   weeks; this is the long pole.
+4. ⏳ **H5 Games Ads** enabled for the account — the Ad Placement API (`type: 'reward'`) is a
+   separate product from ordinary AdSense display ads, and rewarded placements only serve
+   once it's turned on.
+
+Dev builds add `data-adbreak-test="on"` to the ad script automatically (see
+`useRewardedAd.ts`), so `npm run dev` against a real publisher id serves test ads rather than
+generating real traffic — same intent as iOS using Google's test ad unit in Debug.

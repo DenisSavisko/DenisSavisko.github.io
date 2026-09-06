@@ -1,8 +1,20 @@
 # Ads on web: watch ads to release a held stake, or to self-confirm a gated goal
 
-Status: **not built yet**. This is the plan for web's item #5 (the last item from the original
-"what's left" list — everything else on it shipped this session). Read this file fresh in any
-new/compacted session before touching web ads code.
+Status: **built, steps 1–7 done. Step 8 (real end-to-end test) is blocked on AdSense site
+review + H5 Games Ads approval — nothing code can do.** The publisher id turned out to be the
+same account as AdMob/iOS (`ca-pub-4389491745714720`), so `adsConfig.ts` is wired and
+`adMode()` is `'live'`; `ads.txt` is at the repo root (which also served as the AdSense
+site-ownership verification). Until the site is approved and H5 Games Ads is on, requests go
+unfilled and the UI shows "No ad is available right now" — a designed outcome, not a failure.
+No further code change is needed to go live.
+
+`adMode()`'s other two states still matter: a build with the id removed falls back to
+`'simulated'` in dev (a `confirm()` dialog stands in for the ad, so the counters/threshold/
+release path stays exercisable without the network) and `'unavailable'` in production.
+
+Everything below is still accurate as the design; deviations found while implementing are
+noted inline as **Built:** callouts. Read this file fresh in any new/compacted session
+before touching web ads code.
 
 Mirrors two iOS features (`MyMainGoals/ADS_RELEASE_PLAN.md`, `TaskStore.swift`,
 `AdReleaseCoordinator.swift`, `FailedListView.swift`, `VerifyGoalView.swift`) as closely as the
@@ -55,12 +67,34 @@ adsbygoogle.push({
 });
 ```
 
+**Built:** the callback names above are what shipped, with two refinements found in Google's
+current docs. There is no per-ad preload call to mirror `GADRewardedAd.load` — the Ad
+Placement API preloads on its own, configured once via an `adConfig` push
+(`{ preloadAdBreaks: 'on', sound: 'on', onReady }`), so `useRewardedAd`'s `'ready'` means
+"the SDK is up and preloading," not "a specific ad object is in hand." And `adBreakDone`
+fires for *every* outcome including "couldn't show one," which makes it the single clean
+resolution point: `useRewardedAd` defaults the outcome to `no-ad` and lets `adViewed`/
+`adDismissed` upgrade it before `adBreakDone` resolves the promise.
+
+The script tag is injected on first use (`loadAdPlacementApi`) rather than sitting in
+`index.html`, so a build with no publisher id never issues an ad request and neither does a
+session that never opens a flow with ads in it. Dev builds add `data-adbreak-test="on"` —
+same intent as iOS's Debug-only test ad unit: never generate real traffic against the real
+account.
+
 **Required manual setup** (same category as the CloudKit/Stripe dashboard steps already in
-`README.md` — none of this can be scripted):
-1. A Google AdSense account approved for `mymaingoals.app`.
-2. A rewarded ad unit ("reward" format) created for the site.
-3. The publisher `client` id wired into a new `adsConfig.ts` (mirrors `AdsConfig.swift`'s
-   `rewardedAdUnitID`, dev vs prod split via `import.meta.env.DEV` mirroring iOS's `#if DEBUG`).
+`README.md` — none of this can be scripted; also listed in `README.md`'s own AdSense section):
+1. A Google AdSense account approved for `mymaingoals.app`, with **H5 Games Ads** (the Ad
+   Placement API) enabled — that's the product this uses, and it's a separate approval from
+   ordinary AdSense display ads.
+2. The publisher `client` id into `adsConfig.ts`'s `ADSENSE_CLIENT_ID` — **done**, and it's
+   `ca-pub-4389491745714720`, the *same publisher account as AdMob/iOS* rather than a second
+   one. `ads.txt` at the repo root carries the same number as the pre-existing `app-ads.txt`
+   (the two aren't interchangeable: `app-ads.txt` is read for the AdMob/iOS side, `ads.txt`
+   for web).
+3. No ad-unit id to wire up: the Ad Placement API keys off placement *names*
+   (`AD_PLACEMENTS.release` / `.verificationBypass` in `adsConfig.ts`), not per-unit ids —
+   the one real structural difference from `AdsConfig.swift`'s `rewardedAdUnitID`.
 
 **Real risk, bigger than on iOS**: fill rate. iOS's own plan doc already flags AdMob fill as the
 limiting factor even there; Google's web rewarded-ad inventory skews heavily toward game portals,
@@ -124,6 +158,20 @@ absent — check before assuming they're already mapped).
    reviewed against a mocked `useRewardedAd` that always reports "no ad available," so the rest of
    the flow (counters, thresholds, release/bypass calls) is provably correct independent of the ad
    network actually working.
+
+   **Built:** the mock ended up more useful than "always no ad available" — `adMode()` returns
+   `'simulated'` in dev with no publisher id, and `useRewardedAd.watch()` then shows a
+   `confirm()` standing in for the ad (OK = watched to the end, Cancel = closed early), so
+   both the earned and dismissed paths are exercisable, not just the dead one. Production
+   with no id still degrades to `'unavailable'` → "no ad available."
+
+**Built, beyond the listed steps:** `useBackgroundSync.ts`'s pending-release retry had to grow
+the ads-watched clause too. It previously filtered on `isDone` alone, with a comment saying
+web has no ads-release flow — now it mirrors `TaskStore.tasksPendingRelease` properly
+(`isDone || adsWatchedForRelease >= ADS_REQUIRED_FOR_RELEASE`). Without that, a goal that
+watched all 20 ads but whose `releaseHold` call never landed would sit at `held` forever with
+nothing retrying it. `FailedTab.tsx` also mirrors `releasePendingSection`'s manual "Retry Now"
+button on top of that automatic retry, same as iOS.
 
 ## Explicitly out of scope
 

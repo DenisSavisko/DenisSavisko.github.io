@@ -13,9 +13,9 @@ parity as closely as possible. Full architecture, feature-by-file mapping, Cloud
 setup steps, and known browser quirks/gotchas: **`webapp-src/README.md`** — read that before
 making non-trivial changes here, it's the living doc. `WEB_PLAN.md` in the `MyMainGoals`
 repo has the original hosting/CI/URL-structure decisions (still accurate) but is otherwise
-superseded by that README. The one feature planned but not yet built — ads-driven stake
-release/verification-bypass — has its own plan doc, `webapp-src/ADS_RELEASE_PLAN.md`; read
-that fresh before starting on it.
+superseded by that README. The ads-driven stake release/verification-bypass flows have their
+own doc, `webapp-src/ADS_RELEASE_PLAN.md` — built now, but still waiting on an AdSense
+account before they can serve a real ad; read it fresh before touching ads code.
 
 Quick orientation:
 - **Stack**: React + Konsta UI (`theme="ios"`) + Tailwind CSS v4, Vite. No router — one page

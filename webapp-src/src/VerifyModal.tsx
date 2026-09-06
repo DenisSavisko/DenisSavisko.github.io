@@ -2,12 +2,19 @@ import { useEffect, useState } from 'react';
 import { Button, Preloader, Sheet } from 'konsta/react';
 import { ensureSignedIn } from './supabase';
 import { confirmVerification, getVerification, type VerificationInfo } from './verification';
-import { getCloudKitContainer, ownsGoalWithVerificationCode } from './cloudkit';
+import { getCloudKitContainer, ownsGoalWithVerificationCode, recordAdWatchedForVerificationBypass } from './cloudkit';
 import type { CloudKitAuthState } from './useCloudKitAuth';
-import { formatDeadline, formatStakeCents } from './useGoals';
+import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
+import { ADS_REQUIRED_FOR_VERIFICATION_BYPASS, AD_PLACEMENTS } from './adsConfig';
+import { useRewardedAd } from './useRewardedAd';
 import { CheckCircleIcon, XMarkIcon } from './icons';
 
 type ConfirmState = 'idle' | 'confirming' | 'confirmed' | 'error';
+
+/// The signed-in person's own goal for this token, or null if it isn't theirs — `undefined`
+/// while the check is still running (mirrors VerifyGoalView's `matchingLocalTask` being an
+/// optional whose absence and "not looked up yet" are distinguished by `isLoading`).
+type OwnedGoal = Goal | null | undefined;
 
 /// Opens as a bottom sheet over the Goals tab (mirrors VerifyGoalView being presented as a
 /// sheet over the app's main task list on iOS) — never a separate page, and closing it
@@ -19,14 +26,18 @@ export function VerifyModal({
   token,
   authStatus,
   onClose,
+  onGoalUpdated,
 }: {
   token: string | null;
   authStatus: CloudKitAuthState['status'];
   onClose: () => void;
+  /// Called when the self-confirm ad bypass writes to the signed-in person's own goal, so the
+  /// Goals tab behind this sheet can update optimistically like every other write does.
+  onGoalUpdated?: (goal: Goal) => void;
 }) {
   const [info, setInfo] = useState<VerificationInfo | null>(null);
   const [loadError, setLoadError] = useState(false);
-  const [ownsGoal, setOwnsGoal] = useState<boolean | null>(null);
+  const [ownedGoal, setOwnedGoal] = useState<OwnedGoal>(undefined);
   const [confirmState, setConfirmState] = useState<ConfirmState>('idle');
   const [confirmErrorMessage, setConfirmErrorMessage] = useState<string | null>(null);
 
@@ -34,7 +45,7 @@ export function VerifyModal({
     if (!token) return;
     setInfo(null);
     setLoadError(false);
-    setOwnsGoal(null);
+    setOwnedGoal(undefined);
     setConfirmState('idle');
     setConfirmErrorMessage(null);
     let cancelled = false;
@@ -60,12 +71,12 @@ export function VerifyModal({
     let cancelled = false;
     (async () => {
       try {
-        const owns = await ownsGoalWithVerificationCode(getCloudKitContainer(), token);
-        if (!cancelled) setOwnsGoal(owns);
+        const owned = await ownsGoalWithVerificationCode(getCloudKitContainer(), token);
+        if (!cancelled) setOwnedGoal(owned);
       } catch {
         // Fail open to the Confirm button rather than blocking a real friend just because the
         // self-check couldn't run.
-        if (!cancelled) setOwnsGoal(false);
+        if (!cancelled) setOwnedGoal(null);
       }
     })();
     return () => {
@@ -99,6 +110,14 @@ export function VerifyModal({
     }
   }
 
+  /// The bypass writes to the same goal this sheet is showing, so its counter has to be kept
+  /// current locally too — otherwise every watch would re-read the pre-write count and the
+  /// progress would never move.
+  function handleBypassGoalUpdated(goal: Goal) {
+    setOwnedGoal(goal);
+    onGoalUpdated?.(goal);
+  }
+
   return (
     <Sheet opened={token != null} onBackdropClick={onClose} className="mx-auto max-w-(--k-app-max-w)">
       <div className="relative px-6 pb-10 pt-12 text-center">
@@ -109,7 +128,18 @@ export function VerifyModal({
         >
           <XMarkIcon className="h-4 w-4" />
         </button>
-        {renderBody({ token, info, loadError, ownsGoal, confirmState, confirmErrorMessage, authStatus, onConfirm: handleConfirm })}
+        {renderBody({
+          token,
+          info,
+          loadError,
+          ownedGoal,
+          confirmState,
+          confirmErrorMessage,
+          authStatus,
+          onConfirm: handleConfirm,
+          onBypassGoalUpdated: handleBypassGoalUpdated,
+          onBypassUnlocked: () => setConfirmState('confirmed'),
+        })}
       </div>
     </Sheet>
   );
@@ -119,20 +149,24 @@ function renderBody({
   token,
   info,
   loadError,
-  ownsGoal,
+  ownedGoal,
   confirmState,
   confirmErrorMessage,
   authStatus,
   onConfirm,
+  onBypassGoalUpdated,
+  onBypassUnlocked,
 }: {
   token: string | null;
   info: VerificationInfo | null;
   loadError: boolean;
-  ownsGoal: boolean | null;
+  ownedGoal: OwnedGoal;
   confirmState: ConfirmState;
   confirmErrorMessage: string | null;
   authStatus: CloudKitAuthState['status'];
   onConfirm: () => void;
+  onBypassGoalUpdated: (goal: Goal) => void;
+  onBypassUnlocked: () => void;
 }) {
   if (!token) return null;
 
@@ -172,12 +206,10 @@ function renderBody({
         <p className="mt-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
           Sign in with your Apple ID (above) to confirm.
         </p>
-      ) : ownsGoal === null ? (
+      ) : ownedGoal === undefined ? (
         <p className="mt-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">Checking…</p>
-      ) : ownsGoal ? (
-        <p className="mt-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-          This is your own goal — a friend needs to confirm it.
-        </p>
+      ) : ownedGoal ? (
+        <SelfConfirmBypass goal={ownedGoal} onGoalUpdated={onBypassGoalUpdated} onUnlocked={onBypassUnlocked} />
       ) : (
         <>
           {confirmErrorMessage && <p className="mt-2 text-sm text-red-500">{confirmErrorMessage}</p>}
@@ -187,5 +219,70 @@ function renderBody({
         </>
       )}
     </>
+  );
+}
+
+/// Mirrors VerifyGoalView.selfConfirmBypassSection — only ever reachable for the goal's own
+/// owner, who can't confirm their own goal, so watching enough ads is the alternative to
+/// waiting on a friend. Writes only the owner's own CloudKit record; the server's
+/// `task_verifications.is_verified` stays untouched, exactly as on iOS.
+function SelfConfirmBypass({
+  goal,
+  onGoalUpdated,
+  onUnlocked,
+}: {
+  goal: Goal;
+  onGoalUpdated: (goal: Goal) => void;
+  onUnlocked: () => void;
+}) {
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isWatchingAd, setIsWatchingAd] = useState(false);
+  const { status: adStatus, watch } = useRewardedAd(AD_PLACEMENTS.verificationBypass, true);
+
+  const remaining = Math.max(0, ADS_REQUIRED_FOR_VERIFICATION_BYPASS - goal.adsWatchedForVerificationBypass);
+
+  async function watchAd() {
+    setErrorMessage(null);
+    setIsWatchingAd(true);
+    const outcome = await watch();
+    if (outcome === 'earned') {
+      try {
+        const updated = mapRecord(await recordAdWatchedForVerificationBypass(getCloudKitContainer(), goal));
+        onGoalUpdated(updated);
+        // recordAdWatchedForVerificationBypass flips isVerified itself at the threshold —
+        // mirrors VerifyGoalView's `if task.isVerified { didConfirm = true }`.
+        if (updated.isVerified) onUnlocked();
+      } catch {
+        setErrorMessage("Couldn't count that ad. Please try again.");
+      }
+    } else if (outcome === 'dismissed') {
+      setErrorMessage("That ad didn't finish, so it doesn't count — try again.");
+    } else {
+      setErrorMessage('No ad is available right now — try again in a moment.');
+    }
+    setIsWatchingAd(false);
+  }
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-2">
+      <p className="text-sm text-ios-secondary dark:text-ios-secondary-dark">This is your own goal — a friend needs to confirm it.</p>
+      <p className="text-sm text-ios-secondary dark:text-ios-secondary-dark">
+        Or watch {remaining} more {remaining === 1 ? 'ad' : 'ads'} to unlock Done anyway
+      </p>
+      <button
+        onClick={watchAd}
+        disabled={isWatchingAd || adStatus === 'preloading'}
+        className="mt-1 rounded-full border border-current px-4 py-1.5 text-sm font-medium text-primary disabled:opacity-40"
+      >
+        {isWatchingAd
+          ? 'Watching…'
+          : adStatus === 'ready'
+            ? `Watch Ad · ${goal.adsWatchedForVerificationBypass}/${ADS_REQUIRED_FOR_VERIFICATION_BYPASS}`
+            : adStatus === 'preloading'
+              ? 'Loading…'
+              : 'No Ad — Retry'}
+      </button>
+      {errorMessage && <p className="text-xs text-red-500">{errorMessage}</p>}
+    </div>
   );
 }

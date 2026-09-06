@@ -7,6 +7,8 @@ import {
   GOAL_FIELDS,
   GOAL_RECORD_TYPE,
 } from './cloudkitConfig';
+import { ADS_REQUIRED_FOR_VERIFICATION_BYPASS } from './adsConfig';
+import { mapRecord, type Goal } from './useGoals';
 
 let container: CKContainer | null = null;
 
@@ -74,9 +76,14 @@ async function queryAllGoals(container: CKContainer): Promise<CKRecord[]> {
 /// confirming friend never has this goal in their own list. On web there's no local store, but
 /// there is a real signed-in identity via CloudKit JS, so this queries the signed-in user's
 /// own synced goals instead of trusting a device-local cache.
-export async function ownsGoalWithVerificationCode(container: CKContainer, token: string): Promise<boolean> {
+///
+/// Returns the goal itself (not just "yes/no") for the same reason `matchingLocalTask` is a
+/// `GoalTask?` rather than a Bool on iOS: the self-confirm-blocked screen is also where the
+/// ad-watching bypass lives, and that needs the goal's own counter to read and write.
+export async function ownsGoalWithVerificationCode(container: CKContainer, token: string): Promise<Goal | null> {
   const records = await queryAllGoals(container);
-  return records.some((record) => record.fields[GOAL_FIELDS.verificationCode]?.value === token);
+  const match = records.find((record) => record.fields[GOAL_FIELDS.verificationCode]?.value === token);
+  return match ? mapRecord(match) : null;
 }
 
 /// Shared by every "update a few fields on an existing goal" write — markGoalDone,
@@ -131,6 +138,43 @@ export async function updateGoalStakeStatus(
   status: string
 ): Promise<CKRecord> {
   return saveGoalFields(container, goal, { [GOAL_FIELDS.stakeStatus]: { value: status } });
+}
+
+/// Mirrors the counter half of TaskStore.recordAdWatched — one completed rewarded-ad watch
+/// toward releasing this goal's held stake. The release-hold call that follows once the
+/// threshold is reached lives in App.tsx (handleAdWatchedForRelease), the same place every
+/// other Supabase-then-CloudKit sequence in this client lives.
+export async function recordAdWatchedForRelease(
+  container: CKContainer,
+  goal: { recordName: string; recordChangeTag: string; adsWatchedForRelease: number }
+): Promise<CKRecord> {
+  return saveGoalFields(container, goal, {
+    [GOAL_FIELDS.adsWatchedForRelease]: { value: goal.adsWatchedForRelease + 1 },
+  });
+}
+
+/// Mirrors TaskStore.recordVerificationBypassAdWatched, including flipping isVerified once
+/// the threshold is reached — written in the *same* save rather than as a follow-up
+/// markGoalVerified call, since saveGoalFields returns a new recordChangeTag and a second
+/// write with the stale one would be rejected outright.
+///
+/// iOS frames its version as "local-only, never touches the server's is_verified" — but that
+/// local SwiftData write mirrors straight to this same CD_isVerified CloudKit field anyway,
+/// so writing it directly here reaches the identical end state, just without a local store in
+/// between (see ADS_RELEASE_PLAN.md). The server's `task_verifications.is_verified` is
+/// untouched by both, which is the part that actually matters.
+export async function recordAdWatchedForVerificationBypass(
+  container: CKContainer,
+  goal: { recordName: string; recordChangeTag: string; adsWatchedForVerificationBypass: number }
+): Promise<CKRecord> {
+  const watched = goal.adsWatchedForVerificationBypass + 1;
+  const fields: Record<string, { value: unknown }> = {
+    [GOAL_FIELDS.adsWatchedForVerificationBypass]: { value: watched },
+  };
+  if (watched >= ADS_REQUIRED_FOR_VERIFICATION_BYPASS) {
+    fields[GOAL_FIELDS.isVerified] = { value: 1 };
+  }
+  return saveGoalFields(container, goal, fields);
 }
 
 /// Mirrors TaskStore.delete.
