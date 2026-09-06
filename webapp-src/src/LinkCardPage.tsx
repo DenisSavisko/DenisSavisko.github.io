@@ -19,6 +19,17 @@ export function LinkCardPage({ token }: { token: string }) {
   );
 }
 
+/// The iOS app appends `?src=ios` when it opens this page (see create-link-card-session), so
+/// a user who arrived from the app gets sent back to it rather than into the web client.
+/// Read once at module scope: the query string can't change while the page is mounted.
+const CAME_FROM_IOS_APP = new URLSearchParams(window.location.search).get('src') === 'ios';
+
+/// Custom scheme, not the app's existing mymaingoals.app Universal Link — Safari ignores a
+/// universal link that points at the domain it's already showing, which is precisely this
+/// case. Nothing needs to handle it app-side beyond being launched: AddTaskSheet re-checks
+/// for a linked card on foreground, so simply coming back to the foreground unlocks staking.
+const RETURN_TO_APP_URL = 'mymaingoals://link-card-done';
+
 function LinkCardContent({ token }: { token: string }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -69,8 +80,10 @@ function LinkCardContent({ token }: { token: string }) {
       country: 'US',
       currency: 'usd',
       // Apple Pay won't show a $0 total unless it's marked pending — which is exactly what
-      // this is: a card being saved for a charge that may never happen.
-      total: { label: 'Save card for goal stakes', amount: 0, pending: true },
+      // this is: a card being saved for a charge that may never happen. The label is the
+      // only place we get to explain the "Amount Pending" Apple then renders next to it,
+      // so it says *why* there's no number rather than naming the action again.
+      total: { label: 'Charged only if you miss a deadline', amount: 0, pending: true },
     });
     let cancelled = false;
     pr.canMakePayment().then((result) => {
@@ -139,12 +152,23 @@ function LinkCardContent({ token }: { token: string }) {
           <>
             <p className="text-center text-lg font-semibold text-black dark:text-white">Card linked ✓</p>
             <p className="text-center text-sm text-ios-secondary dark:text-ios-secondary-dark">
-              {formatCard(savedCard)} is saved. You can close this page and go back to the app — staking is unlocked there
-              now.
+              {formatCard(savedCard)} is saved — staking is unlocked now.
             </p>
-            {/* For someone who got here from the web app rather than from iOS: clearing the
-                hash is all it takes to drop back into the goals list. */}
-            <Button onClick={() => { window.location.hash = ''; }}>Continue to the web app</Button>
+            {CAME_FROM_IOS_APP ? (
+              <>
+                <Button onClick={() => { window.location.href = RETURN_TO_APP_URL; }}>Back to MyMainGoals</Button>
+                {/* The scheme silently does nothing if the app isn't installed (or if the
+                    user declines Safari's "Open in…" prompt), so say what to do instead
+                    rather than leaving them on a button that looks broken. */}
+                <p className="text-center text-xs text-ios-secondary dark:text-ios-secondary-dark">
+                  Or just switch back to the app — it picks this up on its own.
+                </p>
+              </>
+            ) : (
+              /* Came from the web app: clearing the hash is all it takes to drop back into
+                 the goals list. */
+              <Button onClick={() => { window.location.hash = ''; }}>Continue to the web app</Button>
+            )}
           </>
         ) : (
           <>
