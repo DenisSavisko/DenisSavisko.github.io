@@ -24,13 +24,17 @@
   // title/stake/deadline and confirm on the web — it establishes its own anonymous Supabase
   // session client-side rather than relying on one already existing here. Hash fragment, not
   // a path, so no server-side routing is needed for it.
+  //
+  // The link itself is plain HTML pointing at /webapp/ and is always visible (it used to be
+  // hidden until this script un-hid it, which meant the one useful action on this page was
+  // invisible on every path except /verify/<token>, and invisible entirely with JS off).
+  // All this does now is *upgrade* the destination to carry the token through, and swap in
+  // the confirm-specific subtitle.
   document.addEventListener('DOMContentLoaded', function () {
     var match = /^\/verify\/(.+)$/.exec(window.location.pathname);
     if (!match) return;
-    var link = document.getElementById('web-link');
-    link.href = '/webapp/#verify/' + match[1];
-    link.hidden = false;
-    document.getElementById('web-link-note').hidden = false;
+    document.getElementById('web-link').href = '/webapp/#verify/' + match[1];
+    document.getElementById('subtitle').textContent = 'See what you were asked to confirm.';
   });
 </script>
 <style>
@@ -63,14 +67,16 @@
     separate page that establishes its own session before reading anything.
   -->
   <h1>Get MyMainGoals</h1>
-  <p class="muted">See what you were asked to confirm.</p>
+  <!-- Generic by default, since this page catches *every* unmatched path, not just
+       /verify/<token> — the script above swaps in the confirm-specific line for those. -->
+  <p class="muted" id="subtitle">Focus on up to three goals at a time — stake real money on the ones that matter.</p>
   <!-- Not approved by Apple yet, so apps.apple.com/app/id0000000000 is a dead link. A plain
        span, not an <a> with hidden/disabled — no href at all means no click can ever go
        anywhere, rather than relying on a hidden/disabled treatment that's one CSS rule away
        from silently becoming clickable again (see the [hidden] comment above). Swap back to
        a real link once there's an App Store id. -->
   <span class="app-link-soon">Get the app (soon)</span>
-  <a class="app-link" id="web-link" href="#" hidden>Try the web version →</a>
-  <p class="muted" id="web-link-note" hidden style="margin-top: 8px;">Requires signing in with your Apple ID.</p>
+  <a class="app-link" id="web-link" href="/webapp/">Try the web version →</a>
+  <p class="muted" id="web-link-note" style="margin-top: 8px;">Requires signing in with your Apple ID.</p>
 </body>
 </html>
