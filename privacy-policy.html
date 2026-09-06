@@ -17,7 +17,7 @@
 </head>
 <body>
   <h1>Privacy Policy</h1>
-  <p class="updated">Effective August 30, 2026</p>
+  <p class="updated">Effective September 6, 2026</p>
 
   <p>MyMainGoals ("the app") is a goal-tracking app that lets you optionally stake money on
   a goal to help you follow through. This policy explains what data the app collects and how
@@ -26,14 +26,25 @@
   <h2>What we collect</h2>
   <ul>
     <li><strong>An anonymous account identifier.</strong> The app signs you in anonymously
-    (via Supabase) so your data can be associated with your install — no name, email, or
-    password is ever requested or collected.</li>
+    (via Supabase) so friend-verification links can work — no name, email, or password is
+    requested.</li>
+    <li><strong>Sign in with Apple, only if you use staking.</strong> The first time you set
+    up staking, you sign in with Apple. We receive the stable identifier Apple issues for
+    this app and nothing else — we do not request your name or email address, and Apple does
+    not share your real Apple ID with us. The free goal-tracking part of the app never asks
+    you to sign in.</li>
     <li><strong>Your goals.</strong> Titles, deadlines, and completion status. These sync
-    across your own devices via your personal iCloud account (Apple's CloudKit) and are never
-    visible to us or anyone else.</li>
-    <li><strong>Staked-goal records.</strong> If you choose to stake money on a goal, the
-    amount, deadline, and payment status are stored on our backend, linked only to your
-    anonymous identifier — never to your real-world identity.</li>
+    across your own devices via your personal iCloud account (Apple's CloudKit) and are not
+    visible to us. The one exception is a goal you choose to have a friend confirm: its title,
+    stake amount, and deadline are stored on our backend so the link you share can display
+    them, and anyone holding that link can see them.</li>
+    <li><strong>Staked-goal records.</strong> If you stake money on a goal, the amount,
+    deadline, and payment status are stored on our backend, linked to your account
+    identifier.</li>
+    <li><strong>A saved payment method, if you add one.</strong> Cards are added on this
+    website, never inside the app. Your card details go directly to Stripe; what reaches us
+    is only Stripe's reference to the saved card plus its brand and last four digits, so the
+    app can show you which card is on file.</li>
     <li><strong>Ad requests.</strong> If you watch a rewarded ad to release a pending stake,
     Google AdMob serves that ad. We request <strong>non-personalized</strong> ads only, so no
     advertising identifier or cross-app tracking is used, and no App Tracking Transparency
@@ -46,14 +57,23 @@
   end to end.</p>
 
   <h2>Who we share data with</h2>
-  <p>Only the services needed to run the app: <strong>Stripe</strong> (payment processing),
-  <strong>Supabase</strong> (backend hosting and your anonymous account), and
+  <p>Only the services needed to run the app: <strong>Stripe</strong> (payment processing and
+  storing your saved card), <strong>Supabase</strong> (backend hosting and your account), and
   <strong>Google AdMob</strong> (ad serving, non-personalized only). We do not sell data to
   anyone.</p>
 
+  <h2>Deleting your account</h2>
+  <p>You can delete your account at any time from <strong>Settings</strong> inside the app.
+  Doing so removes your sign-in, your saved card (deleted at Stripe as well), and any pending
+  card-linking data. Any stake still being held is released first, so you are not charged for
+  it. Records of stakes that have already completed are kept as a financial record, with your
+  identifier removed so they are no longer connected to you. Your goals are not stored on our
+  servers — they live in your own iCloud account and stay there, under your control, whether
+  or not you delete your account here.</p>
+
   <h2>How long we keep data</h2>
-  <p>Goal and stake records are kept indefinitely as your own history within the app, tied
-  only to your anonymous identifier.</p>
+  <p>Stake records are kept indefinitely as a financial record. Everything else is removed
+  when you delete your account, as described above.</p>
 
   <h2>Children</h2>
   <p>MyMainGoals is not directed at children under 13, and we do not knowingly collect data
