@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getCloudKitContainer, isCloudKitConfigured } from './cloudkit';
+import { saveAuthTokenCookie } from './cloudkitAuthPersistence';
 
 export type CloudKitAuthState =
   | { status: 'unconfigured' }
@@ -21,13 +22,22 @@ export function useCloudKitAuth(): CloudKitAuthState {
     let cancelled = false;
     const container = getCloudKitContainer();
 
+    // Mirrored to localStorage on every auth transition, since the cookie CloudKit JS writes
+    // gets capped to 24h by Safari — see cloudkitAuthPersistence.ts. Saving runs regardless of
+    // `cancelled`: the token is app-wide state, not this hook's render state, and a sign-in
+    // that lands after unmount is still one worth persisting.
     container.whenUserSignsIn().then(() => {
+      saveAuthTokenCookie();
       if (!cancelled) setState({ status: 'signed-in' });
     });
     container.whenUserSignsOut().then(() => {
+      // Clears the mirror — a stale token here would be restored on the next visit and
+      // silently undo the sign-out.
+      saveAuthTokenCookie();
       if (!cancelled) setState({ status: 'signed-out' });
     });
     container.setUpAuth().then((userIdentity) => {
+      saveAuthTokenCookie();
       if (!cancelled) setState({ status: userIdentity ? 'signed-in' : 'signed-out' });
     });
 

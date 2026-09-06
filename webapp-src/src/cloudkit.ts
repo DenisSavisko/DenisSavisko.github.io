@@ -8,6 +8,7 @@ import {
   GOAL_RECORD_TYPE,
 } from './cloudkitConfig';
 import { ADS_REQUIRED_FOR_VERIFICATION_BYPASS } from './adsConfig';
+import { restoreAuthTokenCookie } from './cloudkitAuthPersistence';
 import { mapRecord, type Goal } from './useGoals';
 
 let container: CKContainer | null = null;
@@ -16,6 +17,10 @@ let container: CKContainer | null = null;
 /// CloudKit shares this one container/session.
 export function getCloudKitContainer(): CKContainer {
   if (!container) {
+    // Strictly before configure() — that's when CloudKit JS reads the auth cookie to decide
+    // whether a session already exists. See cloudkitAuthPersistence.ts for why the cookie
+    // needs propping up at all (Safari caps it to 24h in the common share-link case).
+    restoreAuthTokenCookie();
     CloudKit.configure({
       containers: [
         {

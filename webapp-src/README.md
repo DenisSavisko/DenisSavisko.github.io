@@ -129,6 +129,23 @@ changes).
   `pointerenter` without checking whether a previous one is still mid-removal. Fast alternating
   taps fire `pointerenter` faster than each overlay fades out, so they visually stack. Fixed by
   passing `highlight={false}` to `GlassTabbar.tsx`'s `<Glass>` — not needed on a nav bar anyway.
+- **Sign-in expiring after ~24 hours**: not a CloudKit or app bug. `persist: true` makes
+  CloudKit JS store the web auth token in a cookie keyed by the container id, written from
+  JavaScript with a 14-day expiry (its `setCookie` hardcodes `var n = 14`). Safari's ITP caps
+  JS-written first-party cookies at 7 days, and at **24 hours** when the visitor arrived via a
+  cross-site navigation from a tracking-classified domain — i.e. anyone opening a share link
+  from Messages. `cloudkitAuthPersistence.ts` mirrors the cookie into `localStorage` and
+  restores it before `CloudKit.configure()`, which isn't subject to the 24h rule, so re-auth
+  goes from daily to roughly weekly. Its `writeCookie` deliberately replicates cloudkit.js's
+  own cookie format byte for byte (bare hostname, empty `path=`) — writing `path=/` instead
+  would risk two same-named cookies at different paths, and cloudkit.js's reader takes
+  whichever `document.cookie` lists first.
+- **Don't add a PWA manifest with `display: standalone` without testing sign-in first**: it
+  looks like the natural fix for the above (iOS 17+ Home Screen apps are exempt from the ITP
+  purge entirely), but CloudKit JS signs in via `window.open` + `postMessage` back to
+  `window.opener`, not a redirect. A cross-origin popup from an iOS standalone web app can
+  open in Safari with no opener relationship, which would hang sign-in forever with no way
+  out. Verify on a real device before shipping a manifest.
 - **Tailwind + template literals**: a `className` template literal that glues a utility class
   directly against a `${...}` interpolation with no space between them (e.g. `` `!w-16${cond ? '...' : ''}` ``)
   can make Tailwind's source scanner silently drop that class — always leave a literal space
