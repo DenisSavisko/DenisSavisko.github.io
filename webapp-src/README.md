@@ -47,19 +47,28 @@ delete (trash icon on every tab, same `isDeletable`/"still held" gating as iOS, 
 optional "require confirmation from someone else" toggle wired to the same
 `create_verification` RPC and `ShareVerificationSheet.tsx`, mirroring `ShareVerificationPrompt`).
 
-**Staking**: `AddGoalSheet.tsx` collects a card via Stripe (`@stripe/react-stripe-js`,
-`CardElement`, plus a `PaymentRequestButtonElement` for Apple Pay once
-`mymaingoals.app` is registered as a payment method domain in the Stripe Dashboard — a single
-integration handles both, no separate Apple Pay JS code path). `staking.ts`'s `createHold`
-calls the same `create-hold` edge function iOS uses; a card that comes back `requires_action`
-(3D Secure) is resolved client-side via `stripe.confirmCardPayment`, mirroring what
-`ApplePayContext` does internally on iOS with the same `clientSecret`. The goal is only ever
-written to CloudKit after the hold is confirmed (`createGoal`'s comment), same
+**Staking** (rewritten for v2 — see `PAYMENTS_PLAN.md` in the `MyMainGoals` repo): payment
+collection no longer happens at goal-creation time at all. A card is linked **once**, on the
+`#link-card/<token>` route (`LinkCardPage.tsx`), against a zero-charge Stripe SetupIntent;
+`AddGoalSheet.tsx` then only shows the stake picker if `paymentMethods.ts`'s `getLinkedCard`
+finds one, and "Enable Stakes" routes to that page otherwise. `staking.ts`'s `createHold`
+sends just `{ stakeAmountCents, deadline }` — the edge function charges the stored card
+off-session, so there's no `clientSecret` and no client-side 3D Secure step any more; a card
+the issuer won't authorize unattended comes back as a `StakingError` with
+`card_authentication_required` instead, which sends the user back to `#link-card`. The goal is
+still only written to CloudKit after the hold is confirmed (`createGoal`'s comment), same
 "never insert a staked goal locally on a hope the payment will go through" rule as
-`TaskStore.addStakedTask`. Verified end-to-end against the live (test-mode) Stripe/Supabase
-functions via curl with Stripe's `pm_card_visa` test token, and since then against the real
-browser UI on iPhone Safari (card entry, the Apple Pay sheet, 3D Secure) — there's no browser
-tooling in *this* environment, so any future UI verification here still has to go through the
+`TaskStore.addStakedTask`.
+
+This whole design exists because the iOS app was rejected for showing Apple Pay in-app, so
+`LinkCardPage.tsx` is now the *only* Apple Pay surface in the product — the iOS app opens it
+in Safari. **It needs `mymaingoals.app` registered as an Apple Pay web domain in the Stripe
+Dashboard, plus the domain-association file at
+`.well-known/apple-developer-merchantid-domain-association`** — without that the Apple Pay
+button silently never appears and the page falls through to its `CardElement` fallback (which
+is otherwise only meant for desktop/Android). The v1 flow was verified end-to-end against
+test-mode Stripe on iPhone Safari; **v2 has not been run against a real card yet** — and
+there's no browser tooling in *this* environment, so that verification has to go through the
 user rather than a screenshot/click loop.
 
 **Edge Functions need CORS added by hand**: unlike Supabase RPCs (`supabase.rpc()`,
@@ -89,6 +98,10 @@ The floating `+` button disables itself once 3 active goals exist, matching
 
 Mark-done and delete both go through `usePendingAction.ts`, mirroring iOS's `PendingAction` —
 a few seconds to undo (tap to cancel) before the write actually fires.
+
+A `#link-card/<token>` hash replaces the whole page with `LinkCardPage.tsx` (no CloudKit
+sign-in, no tabs) — the token carries all the identity it needs, and it's the route the iOS
+app opens in Safari. Every other hash route is a sheet over the app; this one is not.
 
 A `#verify/<token>` hash opens the friend-verification confirm flow (`VerifyModal.tsx`,
 `verification.ts`, `supabase.ts`) as a closable bottom sheet *on top of* the Goals tab, the same

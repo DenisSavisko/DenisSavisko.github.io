@@ -13,6 +13,7 @@ import { FailedTab, pendingFailedCount } from './FailedTab';
 import { VerifyModal } from './VerifyModal';
 import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
+import { LinkCardPage } from './LinkCardPage';
 import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVerificationSheet';
 import { usePendingAction } from './usePendingAction';
 import { useBackgroundSync } from './useBackgroundSync';
@@ -34,9 +35,19 @@ function parseToken(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+/// Matches #link-card/<token>, the one-time card-linking route (PAYMENTS_PLAN.md v2). Same
+/// static-path trick as #verify above. Unlike every other route this one takes over the
+/// whole page: the iOS app opens it in Safari with no session of its own, so there's nothing
+/// to show around it — the token is the entire context.
+function parseLinkCardToken(): string | null {
+  const match = /^#link-card\/(.+)$/.exec(window.location.hash);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('active');
   const [token, setToken] = useState<string | null>(() => parseToken());
+  const [linkCardToken, setLinkCardToken] = useState<string | null>(() => parseLinkCardToken());
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
   const [shareTarget, setShareTarget] = useState<(ShareVerificationTarget & { headline: string; message: string }) | null>(
     null
@@ -45,7 +56,10 @@ export default function App() {
   const isDark = useSystemDarkMode();
 
   useEffect(() => {
-    const onHashChange = () => setToken(parseToken());
+    const onHashChange = () => {
+      setToken(parseToken());
+      setLinkCardToken(parseLinkCardToken());
+    };
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
@@ -185,6 +199,17 @@ export default function App() {
   }
 
   const isSignedIn = authState.status === 'signed-in';
+
+  // Card linking stands alone: no CloudKit sign-in, no tabs, no goals — the page is opened
+  // straight from the iOS app (or from the stake gating below) purely to save a payment
+  // method, and its token carries all the identity it needs.
+  if (linkCardToken) {
+    return (
+      <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
+        <LinkCardPage token={linkCardToken} />
+      </KonstaApp>
+    );
+  }
 
   return (
     <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
