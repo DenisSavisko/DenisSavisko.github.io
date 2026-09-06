@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
+import { CardElement, Elements, PaymentRequestButtonElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
 import { Block, Button, Navbar, Page, Preloader } from 'konsta/react';
 import { confirmCardLink, createSetupIntent, formatCard, type LinkedCard } from './paymentMethods';
 import { stripePromise } from './stripeConfig';
+import { useSystemDarkMode } from './useSystemDarkMode';
 
 /// The web half of the v2 payments flow (PAYMENTS_PLAN.md). Reached at
 /// `#link-card/<token>` — the iOS app opens it in Safari, and the web app links to it from
@@ -33,6 +34,7 @@ const RETURN_TO_APP_URL = 'mymaingoals://link-card-done';
 function LinkCardContent({ token }: { token: string }) {
   const stripe = useStripe();
   const elements = useElements();
+  const isDark = useSystemDarkMode();
 
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [currentCard, setCurrentCard] = useState<LinkedCard | null>(null);
@@ -164,10 +166,10 @@ function LinkCardContent({ token }: { token: string }) {
               <>
                 <Button onClick={() => { window.location.href = RETURN_TO_APP_URL; }}>Back to MyMainGoals</Button>
                 {/* The scheme silently does nothing if the app isn't installed (or if the
-                    user declines Safari's "Open in…" prompt), so say what to do instead
-                    rather than leaving them on a button that looks broken. */}
+                    user declines Safari's "Open in…" prompt), so leave a way out — phrased
+                    as a fallback, not a second equal route. */}
                 <p className="text-center text-xs text-ios-secondary dark:text-ios-secondary-dark">
-                  Or just switch back to the app — it picks this up on its own.
+                  Not working? Just switch back to the app.
                 </p>
               </>
             ) : (
@@ -197,8 +199,17 @@ function LinkCardContent({ token }: { token: string }) {
                 <Preloader />
               </div>
             )}
+            {/* Stripe's own element, not a styled <Button> — Apple's guidelines expect the
+                official Apple Pay mark, and it's what users actually recognise. It calls
+                paymentRequest.show() on tap itself. Black on light, white on dark, per those
+                same guidelines. */}
             {clientSecret && !isSaving && canUseApplePay && paymentRequest && (
-              <Button onClick={() => paymentRequest.show()}>Set up with Apple Pay</Button>
+              <PaymentRequestButtonElement
+                options={{
+                  paymentRequest,
+                  style: { paymentRequestButton: { type: 'default', theme: isDark ? 'light' : 'dark', height: '48px' } },
+                }}
+              />
             )}
             {clientSecret && !isSaving && !canUseApplePay && (
               <>
