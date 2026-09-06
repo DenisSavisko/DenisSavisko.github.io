@@ -42,14 +42,20 @@ function LinkCardContent({ token }: { token: string }) {
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // The token is single-use, so a page reload after a successful link would fail with
-  // invalid_token — but by then `savedCard` is set and the success state is what shows,
-  // never this fetch's error.
+  // The token is single-use. A reload or back-navigation after a successful link is
+  // recognised server-side and comes back as `alreadyLinked` rather than an expiry error —
+  // only a genuinely stale or unknown token reaches the catch below.
   useEffect(() => {
     let cancelled = false;
     createSetupIntent(token)
       .then((result) => {
         if (cancelled) return;
+        // Landing here on an already-used token means the link succeeded and the page was
+        // reloaded or navigated back onto — show the same success state, not an error.
+        if (result.alreadyLinked) {
+          setSavedCard(result.currentCard);
+          return;
+        }
         setClientSecret(result.clientSecret);
         setCurrentCard(result.currentCard);
       })

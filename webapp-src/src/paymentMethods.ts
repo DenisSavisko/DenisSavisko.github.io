@@ -35,13 +35,22 @@ export async function createLinkCardSession(): Promise<{ token: string; url: str
   return data as { token: string; url: string };
 }
 
+export interface SetupIntentSession {
+  /// Null when `alreadyLinked` — a consumed token deliberately can't mint a new SetupIntent.
+  clientSecret: string | null;
+  currentCard: LinkedCard | null;
+  /// The token was already burned by a successful link (reload, or back-navigation onto the
+  /// page). The card is saved; there's nothing left to do but say so.
+  alreadyLinked: boolean;
+}
+
 /// Called by the #link-card page on load. Creates a **zero-charge** SetupIntent — nothing is
 /// billed when a card is linked; stakes are charged later, off-session, only on a missed
 /// deadline.
-export async function createSetupIntent(token: string): Promise<{ clientSecret: string; currentCard: LinkedCard | null }> {
+export async function createSetupIntent(token: string): Promise<SetupIntentSession> {
   const { data, error } = await supabase.functions.invoke('create-setup-intent', { body: { token } });
   if (error) throw error;
-  return data as { clientSecret: string; currentCard: LinkedCard | null };
+  return data as SetupIntentSession;
 }
 
 /// Called after Stripe.js reports the SetupIntent confirmed. The server re-reads it from
