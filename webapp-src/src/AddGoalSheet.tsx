@@ -169,10 +169,10 @@ export function AddGoalSheet({
           clearStakeSelection();
           setErrorMessage(
             error.code === 'card_declined'
-              ? 'Your card was declined. Add a different one to keep staking.'
+              ? 'Your card was declined. Add a different one to continue.'
               : error.code === 'card_authentication_required'
-                ? 'Your bank needs to confirm this card again. Add it once more to keep staking.'
-                : "Your payment method isn't set up yet. Tap Enable Stakes to add one."
+                ? 'Your bank needs to confirm this card again. Add it once more to continue.'
+                : 'No payment method yet. Add one to use stakes.'
           );
         } else {
           setErrorMessage((error as Error).message || "Couldn't create this goal. Please try again.");
@@ -231,10 +231,7 @@ export function AddGoalSheet({
                 <SegmentedButton
                   key={option.id}
                   active={stakeOptionId === option.id}
-                  onClick={() => {
-                    setStakeOptionId(option.id);
-                    if (option.id === 'none') setRequiresVerification(false);
-                  }}
+                  onClick={() => setStakeOptionId(option.id)}
                 >
                   {option.label}
                 </SegmentedButton>
@@ -254,11 +251,10 @@ export function AddGoalSheet({
               disabled={isBusy}
               className="w-full rounded-2xl border border-black/10 px-4 py-3 text-base font-semibold text-primary dark:border-white/15"
             >
-              Enable Stakes
+              Add a Payment Method
             </button>
             <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-              Staking needs a payment method. Nothing is charged when you add one — a stake is only collected if you miss
-              your own deadline.
+              Nothing is charged now — only if you miss your own deadline.
             </p>
           </>
         ) : (
@@ -282,20 +278,19 @@ export function AddGoalSheet({
             — same reasoning as Title above: List's own insetIos margin plus ListItem's own
             internal padding double up to a ~32px left inset, out of step with every other
             field's flat px-4. */}
-        {isStaked && (
-          <>
-            <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Verification</p>
-            <div className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3 dark:border-white/15">
-              <span className="text-base text-black dark:text-white">Require confirmation from someone else</span>
-              <Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />
-            </div>
-            {requiresVerification && (
-              <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-                Anyone with the link can see this goal's title and stake, and can confirm it for you. Only share it with someone
-                you trust.
-              </p>
-            )}
-          </>
+        {/* Not gated on staking, mirroring AddTaskSheet: a friend confirming you did the
+            thing stands on its own, and createVerification's stake argument is already
+            nullable. */}
+        <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Verification</p>
+        <div className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3 dark:border-white/15">
+          <span className="text-base text-black dark:text-white">Require confirmation from someone else</span>
+          <Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />
+        </div>
+        {requiresVerification && (
+          <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
+            Anyone with the link can see this goal's title{isStaked ? ' and stake' : ''}, and can confirm it for you. Only share
+            it with someone you trust.
+          </p>
         )}
 
         {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
