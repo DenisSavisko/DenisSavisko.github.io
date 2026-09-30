@@ -21,19 +21,19 @@
 </script>
 <script>
   // /webapp is a separate, isolated static app (see webapp-src/) that can show the full
-  // title/stake/deadline and confirm on the web — it establishes its own anonymous Supabase
+  // title/deadline and confirm on the web — it establishes its own anonymous Supabase
   // session client-side rather than relying on one already existing here. Hash fragment, not
   // a path, so no server-side routing is needed for it.
   //
-  // The link itself is plain HTML pointing at /webapp/ and is always visible (it used to be
-  // hidden until this script un-hid it, which meant the one useful action on this page was
-  // invisible on every path except /verify/<token>, and invisible entirely with JS off).
-  // All this does now is *upgrade* the destination to carry the token through, and swap in
-  // the confirm-specific subtitle.
+  // The confirm-in-browser link is shown only on /verify/<token> paths, so a friend without
+  // the app can still confirm. It's deliberately not a general "web version" link — the App
+  // Store app doesn't point people at the web version.
   document.addEventListener('DOMContentLoaded', function () {
     var match = /^\/verify\/(.+)$/.exec(window.location.pathname);
     if (!match) return;
-    document.getElementById('web-link').href = '/webapp/#verify/' + match[1];
+    var link = document.getElementById('web-link');
+    link.href = '/webapp/#verify/' + match[1];
+    link.hidden = false;
     document.getElementById('subtitle').textContent = 'See what you were asked to confirm.';
   });
 </script>
@@ -59,24 +59,23 @@
     the app isn't installed — with the app installed, the Universal Link opens
     VerifyGoalView directly and never reaches here.
 
-    Deliberately shows nothing about the goal — no title, stake, or deadline. Reading that
+    Deliberately shows nothing about the goal — no title or deadline. Reading that
     data now requires a signed-in app session (get_verification has no anon grant): the
     person who composed the share message controls who reads it there, but a bare link
     with no session attached shouldn't be able to pull anything from the database, even
-    non-sensitive fields. The "try the web version" link below opts into that instead, on a
+    non-sensitive fields. The "confirm in your browser" link below opts into that instead, on a
     separate page that establishes its own session before reading anything.
   -->
   <h1>Get MyMainGoals</h1>
   <!-- Generic by default, since this page catches *every* unmatched path, not just
        /verify/<token> — the script above swaps in the confirm-specific line for those. -->
-  <p class="muted" id="subtitle">Focus on up to three goals at a time — stake real money on the ones that matter.</p>
+  <p class="muted" id="subtitle">Focus on up to three goals at a time, and ask a friend to confirm when you’re done.</p>
   <!-- Not approved by Apple yet, so apps.apple.com/app/id0000000000 is a dead link. A plain
        span, not an <a> with hidden/disabled — no href at all means no click can ever go
        anywhere, rather than relying on a hidden/disabled treatment that's one CSS rule away
        from silently becoming clickable again (see the [hidden] comment above). Swap back to
        a real link once there's an App Store id. -->
   <span class="app-link-soon">Get the app (soon)</span>
-  <a class="app-link" id="web-link" href="/webapp/">Try the web version →</a>
-  <p class="muted" id="web-link-note" style="margin-top: 8px;">Requires signing in with your Apple ID.</p>
+  <a class="app-link" id="web-link" href="/webapp/" hidden>Confirm in your browser →</a>
 </body>
 </html>

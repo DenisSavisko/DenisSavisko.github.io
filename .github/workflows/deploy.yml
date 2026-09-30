@@ -32,8 +32,8 @@ jobs:
           npm ci
           npm run build
 
-      # Everything at repo root except webapp-src/ (its source, not part of the served site)
-      # and .github/ is served as-is — same static files as today's legacy branch deploy.
+      # Everything at repo root except webapp-src/ (its source, not part of the served site),
+      # .github/ and CLAUDE.md (repo notes, not site content) is served as-is — same static files as today's legacy branch deploy.
       # `npm run build` above already wrote its output into webapp/ (see vite.config.ts).
       - name: Assemble site
         run: |
@@ -41,7 +41,7 @@ jobs:
           shopt -s dotglob
           for item in *; do
             case "$item" in
-              _site|webapp-src|.github|.git) continue ;;
+              _site|webapp-src|.github|.git|CLAUDE.md) continue ;;
             esac
             cp -R "$item" _site/
           done
