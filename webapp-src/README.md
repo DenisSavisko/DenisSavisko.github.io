@@ -174,10 +174,11 @@ changes).
 1. Go to https://icloud.developer.apple.com/dashboard, select the
    `iCloud.com.denyssavisko.MyMainGoals` container (same one in
    `MyMainGoals/MyMainGoals.entitlements`).
-2. **Environment**: use *Development*, not Production — the app has no App Store listing yet
-   (`app-id=0000000000` placeholders elsewhere in this repo), so real on-device data today
-   lives in Development. Switch `CLOUDKIT_ENVIRONMENT` in `cloudkitConfig.ts` once that
-   changes.
+2. **Environment**: *Production* (`CLOUDKIT_ENVIRONMENT` in `cloudkitConfig.ts`), matching
+   App Store/TestFlight installs. Steps 3–4 must hold in Production, not just Development —
+   schema changes made in Development only reach Production via the dashboard's **Deploy
+   Schema Changes**, and that includes the queryable index. Builds run from Xcode use
+   Development, a separate database, so they never share goals with the web app.
 3. **Schema check** (Development → Schema → Record Types): confirm the actual record type
    and field names for goals, and fix `cloudkitConfig.ts` if they don't match. This repo
    currently assumes SwiftData's known Core-Data-style naming convention (`CD_` prefix over

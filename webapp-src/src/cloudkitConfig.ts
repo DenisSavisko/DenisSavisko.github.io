@@ -5,10 +5,9 @@
 export const CLOUDKIT_CONTAINER_ID = 'iCloud.com.denyssavisko.MyMainGoals';
 export const CLOUDKIT_API_TOKEN = '6170c2315a12bafdbf085d41a7aba4be1c2ff12d1689c7e5563ce8a9c12b97b9';
 
-// The app hasn't shipped (no App Store listing yet), so on-device data today lives in
-// CloudKit's Development environment, not Production — switch this once the app ships and
-// its CloudKit schema is deployed to Production.
-export const CLOUDKIT_ENVIRONMENT: 'development' | 'production' = 'development';
+// Production, matching App Store/TestFlight installs of the iOS app. Builds run from Xcode
+// use Development — a separate database — so they won't see the same goals as this.
+export const CLOUDKIT_ENVIRONMENT: 'development' | 'production' = 'production';
 
 // Core Data/SwiftData's CloudKit mirroring puts everything in this custom zone, never the
 // private database's default zone — confirmed against the actual cloudkit.js source, which
