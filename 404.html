@@ -7,17 +7,14 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <script>
-  // Smart App Banner (Safari only) — disabled for now: not approved by Apple yet, so
-  // app-id=0000000000 is a placeholder and the banner's own "View"/"GET" button would point
-  // nowhere real. This is a *system* UI element Safari renders itself from the mere presence
-  // of an apple-itunes-app meta tag — separate from, and not affected by, hiding the in-page
-  // "Get the app" link below. Re-enable once there's a real numeric App Store id: restore the
-  // meta.content line (app-argument carries this exact /verify/<token> URL through the App
-  // Store install, so iOS redelivers it to .onOpenURL the first time the app opens).
-  // var meta = document.createElement('meta');
-  // meta.name = 'apple-itunes-app';
-  // meta.content = 'app-id=0000000000, app-argument=' + window.location.href;
-  // document.head.appendChild(meta);
+  // Smart App Banner (Safari only) — a system UI element Safari renders from the presence of
+  // an apple-itunes-app meta tag. Built in script rather than static markup so app-argument
+  // can carry this exact /verify/<token> URL through the App Store install; iOS redelivers it
+  // to .onOpenURL the first time the app opens.
+  var meta = document.createElement('meta');
+  meta.name = 'apple-itunes-app';
+  meta.content = 'app-id=6806742917, app-argument=' + window.location.href;
+  document.head.appendChild(meta);
 </script>
 <script>
   // /webapp is a separate, isolated static app (see webapp-src/) that can show the full
@@ -42,11 +39,12 @@
   h1 { font-size: 20px; margin-bottom: 8px; }
   p.muted { color: #666; font-size: 14px; }
   a.app-link { display: block; width: fit-content; margin: 12px auto 0; padding: 14px 28px; border-radius: 12px; background: #d64545; color: white; text-decoration: none; font-weight: 600; }
-  .app-link-soon { display: block; width: fit-content; margin: 24px auto 0; padding: 14px 28px; border-radius: 12px; background: #e5e5ea; color: #999; font-weight: 600; }
+  a.app-link.first { margin-top: 24px; }
+  a.app-link.secondary { background: #e5e5ea; color: #1a1a1a; }
   /* [hidden] is only display:none via the browser's default stylesheet — a same-specificity
      author rule that also sets `display` (a.app-link above, in this exact file) overrides it,
      so an element can carry the hidden attribute and still render. Confirmed the hard way: the
-     "Get the app" link below rendered fully visible and clickable despite having `hidden` set,
+     web link below rendered fully visible and clickable despite having `hidden` set,
      because a.app-link's `display: inline-block` won the cascade. !important here beats that
      unconditionally, for this and any future hidden+styled element in this file. */
   [hidden] { display: none !important; }
@@ -70,12 +68,7 @@
   <!-- Generic by default, since this page catches *every* unmatched path, not just
        /verify/<token> — the script above swaps in the confirm-specific line for those. -->
   <p class="muted" id="subtitle">Focus on up to three goals at a time, and ask a friend to confirm when you’re done.</p>
-  <!-- Not approved by Apple yet, so apps.apple.com/app/id0000000000 is a dead link. A plain
-       span, not an <a> with hidden/disabled — no href at all means no click can ever go
-       anywhere, rather than relying on a hidden/disabled treatment that's one CSS rule away
-       from silently becoming clickable again (see the [hidden] comment above). Swap back to
-       a real link once there's an App Store id. -->
-  <span class="app-link-soon">Get the app (soon)</span>
-  <a class="app-link" id="web-link" href="/webapp/" hidden>Confirm in your browser →</a>
+  <a class="app-link first" href="https://apps.apple.com/app/id6806742917">Download on the App Store</a>
+  <a class="app-link secondary" id="web-link" href="/webapp/" hidden>Confirm in your browser →</a>
 </body>
 </html>

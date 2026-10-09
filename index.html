@@ -6,6 +6,7 @@
 <title>MyMainGoals</title>
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-itunes-app" content="app-id=6806742917">
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 640px; margin: 60px auto; padding: 0 20px; color: #1a1a1a; line-height: 1.6; }
   h1 { margin-bottom: 4px; }
@@ -14,9 +15,8 @@
   ul { padding-left: 20px; }
   /* Same pill treatment as 404.html's buttons. Wraps to stacked on a narrow phone. */
   .cta { display: flex; flex-wrap: wrap; gap: 12px; margin: 28px 0 24px; }
-  .cta a, .cta span { padding: 14px 28px; border-radius: 12px; font-weight: 600; text-decoration: none; }
-  .cta a { background: #d64545; color: #fff; }
-  .cta span { background: #e5e5ea; color: #999; }
+  .cta a { padding: 14px 28px; border-radius: 12px; font-weight: 600; text-decoration: none; background: #d64545; color: #fff; }
+  .cta a.secondary { background: #e5e5ea; color: #1a1a1a; }
 </style>
 </head>
 <body>
@@ -24,12 +24,8 @@
   <p class="tagline">Focus on up to three goals at a time, and ask a friend to confirm when you’re done.</p>
 
   <div class="cta">
-    <!-- Not approved by Apple yet, so apps.apple.com/app/id0000000000 is a dead link. A plain
-         span, not an <a> with hidden/disabled — no href at all means no click can ever go
-         anywhere, rather than relying on a disabled treatment that's one CSS rule away from
-         silently becoming clickable again (404.html hit exactly that bug). Swap to a real
-         link once there's an App Store id. -->
-    <span>Get the app (soon)</span>
+    <a href="https://apps.apple.com/app/id6806742917">Download on the App Store</a>
+    <a class="secondary" href="/webapp/">Or use the web version →</a>
   </div>
 
   <ul>
