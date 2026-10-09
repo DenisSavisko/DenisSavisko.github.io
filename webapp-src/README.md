@@ -207,7 +207,9 @@ changes).
    delete) fixes this by creating the zone itself via `saveRecordZones` if needed — a no-op
    success if it's already there, so it's safe to call unconditionally.
 5. **API Access tab**: enable Web Services for this container and generate a Web Services
-   API Token. Paste it into `CLOUDKIT_API_TOKEN` in `cloudkitConfig.ts`.
+   API Token — **one per environment** (switch the dashboard's environment selector first; a
+   Development token fails against Production with AUTHENTICATION_FAILED). Paste each into
+   `CLOUDKIT_API_TOKENS` in `cloudkitConfig.ts`.
 6. **Allowed origins** (same API Access area, Sign-in with Apple ID / CORS config for
    CloudKit JS): add `https://mymaingoals.app`, and `http://localhost:<port>` if testing
    locally via `npm run dev`.
