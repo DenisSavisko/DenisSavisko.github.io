@@ -3,10 +3,9 @@ import { App as KonstaApp, Block, Fab, Navbar, Page } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
 import { useSystemDarkMode } from './useSystemDarkMode';
 import { useGoals, sortedByTab, mapRecord, type Goal } from './useGoals';
-import { deleteGoal, getCloudKitContainer, markGoalDone, recordAdWatchedForRelease, updateGoalStakeStatus } from './cloudkit';
+import { deleteGoal, getCloudKitContainer, markGoalDone } from './cloudkit';
 import { ensureSignedIn } from './supabase';
 import { releaseHold } from './staking';
-import { ADS_REQUIRED_FOR_RELEASE } from './adsConfig';
 import { ActiveTab } from './ActiveTab';
 import { DoneTab } from './DoneTab';
 import { FailedTab, pendingFailedCount } from './FailedTab';
@@ -139,44 +138,6 @@ export default function App() {
     });
   }
 
-  /// Cancels the Stripe hold and writes back whatever status the backend reports — usually
-  /// "released", but "captured" if the expiry cron won the race, which is a real outcome to
-  /// show rather than an error (same as TaskStore.recordAdWatched/retryRelease on iOS).
-  /// Throws on failure so the caller's UI can surface it; useBackgroundSync retries anything
-  /// left stuck at "held" on its next pass either way.
-  async function finishRelease(goal: Goal) {
-    if (!goal.stripePaymentIntentId) return;
-    await ensureSignedIn();
-    const response = await releaseHold(goal.stripePaymentIntentId);
-    const saved = await updateGoalStakeStatus(getCloudKitContainer(), goal, response.status);
-    applyGoalOverride(goal.id, mapRecord(saved));
-  }
-
-  /// Mirrors TaskStore.recordAdWatched: banks one completed rewarded-ad watch toward
-  /// releasing this goal's held stake, and once ADS_REQUIRED_FOR_RELEASE is reached, makes
-  /// the same releaseHold + updateStakeStatus pair handleToggleDone's staked path makes.
-  async function handleAdWatchedForRelease(goal: Goal) {
-    if (goal.stakeStatus !== 'held') return;
-    const updated = mapRecord(await recordAdWatchedForRelease(getCloudKitContainer(), goal));
-    // Same CloudKit query-index lag as everywhere else — without this the counter would snap
-    // back to its old value on the next poll (see useGoals.ts's applyOverride).
-    applyGoalOverride(goal.id, updated);
-    if (updated.adsWatchedForRelease >= ADS_REQUIRED_FOR_RELEASE) {
-      await finishRelease(updated);
-    }
-    reloadGoals();
-  }
-
-  /// Mirrors TaskStore.retryRelease — the release call on its own, for a goal that already
-  /// watched enough ads but whose release never confirmed (a dropped request, a closed tab).
-  /// Deliberately doesn't touch adsWatchedForRelease: it's already at the required count, and
-  /// bumping it further would misrepresent how many ads were actually needed.
-  async function handleRetryRelease(goal: Goal) {
-    if (goal.stakeStatus !== 'held') return;
-    await finishRelease(goal);
-    reloadGoals();
-  }
-
   /// Mirrors ActiveListView/DoneListView/FailedListView's deleteTask + isDeletable gating —
   /// the undo window (pendingDeletions) is the confirmation, same as iOS, so no separate
   /// confirm dialog on top of it.
@@ -259,8 +220,6 @@ export default function App() {
                   state={goalsState}
                   goals={failed}
                   onDelete={handleDelete}
-                  onAdWatchedForRelease={handleAdWatchedForRelease}
-                  onRetryRelease={handleRetryRelease}
                   pendingDeletions={pendingDeletions}
                 />
               </div>
@@ -314,13 +273,6 @@ export default function App() {
         token={isSignedIn ? token : null}
         authStatus={authState.status}
         onClose={closeVerifyModal}
-        // The self-confirm ad bypass writes to a goal that's also sitting in the list behind
-        // this sheet — same optimistic-update path as every other write, so the Goals tab
-        // reflects it immediately instead of waiting on CloudKit's query index.
-        onGoalUpdated={(goal) => {
-          applyGoalOverride(goal.id, goal);
-          reloadGoals();
-        }}
       />
 
       <AddGoalSheet

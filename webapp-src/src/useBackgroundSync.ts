@@ -4,7 +4,6 @@ import { getCloudKitContainer, markGoalVerified, updateGoalStakeStatus } from '.
 import { ensureSignedIn } from './supabase';
 import { getVerification } from './verification';
 import { getStakeStatuses, releaseHold } from './staking';
-import { ADS_REQUIRED_FOR_RELEASE } from './adsConfig';
 
 /// Mirrors VerificationSync.syncPendingVerifications + StakeSync.retryPendingReleases +
 /// StakeSync.syncHeldStatuses, all three called together on every iOS foreground — here,
@@ -56,14 +55,9 @@ export function useBackgroundSync(goalsState: GoalsState, reload: () => void): v
 
       // Mirrors StakeSync.retryPendingReleases / TaskStore.tasksPendingRelease — a
       // release-hold call that didn't confirm the first time (no network when mark-done ran,
-      // or the tab closed right after the last ad). Without the ads-watched clause, a goal
-      // that watched all ADS_REQUIRED_FOR_RELEASE ads but whose release call never landed
-      // would sit at "held" forever, since nothing else would ever retry it.
+      // or the tab closed right after).
       const pendingRelease = goalsState.goals.filter(
-        (g) =>
-          g.stakeStatus === 'held' &&
-          g.stripePaymentIntentId &&
-          (g.isDone || g.adsWatchedForRelease >= ADS_REQUIRED_FOR_RELEASE)
+        (g) => g.stakeStatus === 'held' && g.stripePaymentIntentId && g.isDone
       );
       for (const goal of pendingRelease) {
         if (cancelled) return;
