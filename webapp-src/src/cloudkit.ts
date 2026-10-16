@@ -24,7 +24,18 @@ export function getCloudKitContainer(): CKContainer {
       containers: [
         {
           containerIdentifier: CLOUDKIT_CONTAINER_ID,
-          apiTokenAuth: { apiToken: CLOUDKIT_API_TOKEN, persist: true },
+          apiTokenAuth: {
+            apiToken: CLOUDKIT_API_TOKEN,
+            persist: true,
+            // CloudKit JS's default theme name ("medium") isn't one it knows, so it falls back
+            // to white-with-outline. Apple's guidelines call for black on light backgrounds
+            // and white on dark; the theme is fixed once the button is drawn, so it follows
+            // the appearance at load.
+            signInButton: {
+              id: 'apple-sign-in-button',
+              theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'white' : 'black',
+            },
+          },
           environment: CLOUDKIT_ENVIRONMENT,
         },
       ],

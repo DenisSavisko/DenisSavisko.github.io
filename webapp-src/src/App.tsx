@@ -176,12 +176,12 @@ export default function App() {
     <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
       <Page ref={pageRef}>
         <Navbar title={isSignedIn ? TAB_TITLES[tab] : 'MyMainGoals'} />
-        <AppleSignInButton />
+        <AppleSignInButton visible={!isSignedIn && authState.status !== 'loading'} />
 
         {!isSignedIn ? (
           // Nothing else is usable while signed out — no tabs, no creating goals, and (see
           // the VerifyModal below) no goal details either — there's only one thing to do
-          // here, which is sign in with the one button above. The #verify/<token> hash is
+          // here, which is sign in with the one button at the bottom. The #verify/<token> hash is
           // left untouched the whole time it's up to VerifyModal's onClose to ever clear it,
           // never just because sign-in hasn't happened yet — so the moment sign-in completes,
           // the still-present token opens the confirm sheet automatically.
@@ -189,8 +189,8 @@ export default function App() {
             {authState.status === 'loading'
               ? 'Loading…'
               : token
-                ? 'Sign in with your Apple ID (above) to continue.'
-                : 'Sign in with your Apple ID (above) to use MyMainGoals.'}
+                ? 'Sign in with your Apple ID to continue.'
+                : 'Sign in with your Apple ID to use MyMainGoals.'}
           </Block>
         ) : (
           <>

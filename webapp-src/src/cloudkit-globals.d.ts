@@ -7,7 +7,11 @@ declare const CloudKit: {
   configure(options: {
     containers: Array<{
       containerIdentifier: string;
-      apiTokenAuth: { apiToken: string; persist: boolean };
+      apiTokenAuth: {
+        apiToken: string;
+        persist: boolean;
+        signInButton?: { id: string; theme: 'black' | 'white' | 'white-with-outline' };
+      };
       environment: 'development' | 'production';
     }>;
   }): void;

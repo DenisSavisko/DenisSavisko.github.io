@@ -17,8 +17,8 @@ type OwnedGoal = Goal | null | undefined;
 /// Opens as a bottom sheet over the Goals tab (mirrors VerifyGoalView being presented as a
 /// sheet over the app's main task list on iOS) — never a separate page, and closing it
 /// (✕, backdrop tap, or the 1.5s auto-close right after confirming) always leaves the Goals
-/// tab underneath untouched. The Apple sign-in button lives in the app's navbar, not in here,
-/// since it stays reachable while this sheet is open (a bottom sheet doesn't cover it) — see
+/// tab underneath untouched. It only opens while signed in (App.tsx passes a null token
+/// otherwise), so the app's one Apple sign-in button never has to appear in here — see
 /// AppleSignInButton's comment for why there's only ever one such element on the page.
 export function VerifyModal({
   token,
@@ -184,7 +184,7 @@ function renderBody({
 
       {authStatus !== 'signed-in' ? (
         <p className="mt-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-          Sign in with your Apple ID (above) to confirm.
+          Sign in with your Apple ID to confirm.
         </p>
       ) : ownedGoal === undefined ? (
         <p className="mt-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">Checking…</p>
