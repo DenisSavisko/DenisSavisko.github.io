@@ -54,8 +54,6 @@ export function mapRecord(record: CKRecord): Goal {
     requiresVerification: Boolean(fieldValue(record, GOAL_FIELDS.requiresVerification)),
     verificationCode: (fieldValue(record, GOAL_FIELDS.verificationCode) as string | null) || null,
     isVerified: Boolean(fieldValue(record, GOAL_FIELDS.isVerified)),
-    // Absent on any record written before these fields existed — GoalTask's own Swift
-    // defaults are 0 too, so a missing field means "none watched", never unknown.
   };
 }
 

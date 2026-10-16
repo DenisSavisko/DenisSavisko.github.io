@@ -1,9 +1,14 @@
 import { useEffect } from 'react';
-import type { GoalsState } from './useGoals';
+import type { Goal, GoalsState } from './useGoals';
 import { getCloudKitContainer, markGoalVerified, updateGoalStakeStatus } from './cloudkit';
 import { ensureSignedIn } from './supabase';
 import { getVerification } from './verification';
 import { getStakeStatuses, releaseHold } from './staking';
+
+/// Done goals whose hold is still "held": the release call after mark-done never confirmed.
+export function goalsPendingRelease(goals: Goal[]): Goal[] {
+  return goals.filter((g) => g.stakeStatus === 'held' && Boolean(g.stripePaymentIntentId) && g.isDone);
+}
 
 /// Mirrors VerificationSync.syncPendingVerifications + StakeSync.retryPendingReleases +
 /// StakeSync.syncHeldStatuses, all three called together on every iOS foreground — here,
@@ -56,9 +61,7 @@ export function useBackgroundSync(goalsState: GoalsState, reload: () => void): v
       // Mirrors StakeSync.retryPendingReleases / TaskStore.tasksPendingRelease — a
       // release-hold call that didn't confirm the first time (no network when mark-done ran,
       // or the tab closed right after).
-      const pendingRelease = goalsState.goals.filter(
-        (g) => g.stakeStatus === 'held' && g.stripePaymentIntentId && g.isDone
-      );
+      const pendingRelease = goalsPendingRelease(goalsState.goals);
       for (const goal of pendingRelease) {
         if (cancelled) return;
         try {

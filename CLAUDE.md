@@ -36,8 +36,10 @@ Quick orientation:
 
 ## Before committing a webapp-src change
 
-Always `npx tsc --noEmit && npm run build` from `webapp-src/` first — this is a plain Vite
-build with no CI type-check gate, so a broken build only surfaces after deploy otherwise.
+Always `npm test && npx tsc --noEmit && npm run build` from `webapp-src/` first — this is a
+plain Vite build with no CI type-check gate, so a broken build only surfaces after deploy
+otherwise. `npm test` runs the Vitest unit tests (`src/*.test.ts`): app logic only, never
+CloudKit, Supabase, or Stripe.
 There's no browser tooling in this environment: UI verification (does it actually render/
 work on an iPhone) has to go through the user, not a screenshot loop.
 
