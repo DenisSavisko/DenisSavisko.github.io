@@ -12,19 +12,20 @@ import { FailedTab, pendingFailedCount } from './FailedTab';
 import { VerifyModal } from './VerifyModal';
 import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
-import { LinkCardPage } from './LinkCardPage';
+import { SettingsTab } from './SettingsTab';
 import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVerificationSheet';
 import { usePendingAction } from './usePendingAction';
 import { useBackgroundSync } from './useBackgroundSync';
 import { GlassTabbar } from './GlassTabbar';
-import { ChecklistIcon, CheckCircleIcon, PlusIcon, XCircleIcon } from './icons';
+import { ChecklistIcon, CheckCircleIcon, GearIcon, PlusIcon, XCircleIcon } from './icons';
 
-type Tab = 'active' | 'done' | 'failed';
+type Tab = 'active' | 'done' | 'failed' | 'settings';
 
 const TAB_TITLES: Record<Tab, string> = {
   active: 'My Main Goals',
   done: 'Done',
   failed: 'Failed',
+  settings: 'Settings',
 };
 
 function parseToken(): string | null {
@@ -34,19 +35,9 @@ function parseToken(): string | null {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
-/// Matches #link-card/<token>, the one-time card-linking route (PAYMENTS_PLAN.md v2). Same
-/// static-path trick as #verify above. Unlike every other route this one takes over the
-/// whole page: the iOS app opens it in Safari with no session of its own, so there's nothing
-/// to show around it — the token is the entire context.
-function parseLinkCardToken(): string | null {
-  const match = /^#link-card\/(.+)$/.exec(window.location.hash);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 export default function App() {
   const [tab, setTab] = useState<Tab>('active');
   const [token, setToken] = useState<string | null>(() => parseToken());
-  const [linkCardToken, setLinkCardToken] = useState<string | null>(() => parseLinkCardToken());
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
   const [shareTarget, setShareTarget] = useState<(ShareVerificationTarget & { headline: string; message: string }) | null>(
     null
@@ -55,10 +46,7 @@ export default function App() {
   const isDark = useSystemDarkMode();
 
   useEffect(() => {
-    const onHashChange = () => {
-      setToken(parseToken());
-      setLinkCardToken(parseLinkCardToken());
-    };
+    const onHashChange = () => setToken(parseToken());
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
@@ -161,17 +149,6 @@ export default function App() {
 
   const isSignedIn = authState.status === 'signed-in';
 
-  // Card linking stands alone: no CloudKit sign-in, no tabs, no goals — the page is opened
-  // straight from the iOS app (or from the stake gating below) purely to save a payment
-  // method, and its token carries all the identity it needs.
-  if (linkCardToken) {
-    return (
-      <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
-        <LinkCardPage token={linkCardToken} />
-      </KonstaApp>
-    );
-  }
-
   return (
     <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
       <Page ref={pageRef}>
@@ -233,6 +210,11 @@ export default function App() {
                 on the same element is what was making the old edge-to-edge Tabbar not render
                 like Konsta's real native-style chrome (see GlassTabbar.tsx for why that's
                 gone now too). */}
+            {tab === 'settings' && <SettingsTab />}
+
+            {/* Not on Settings: adding a goal has nothing to do with it, and it would sit over
+                its rows — same as the iOS app. */}
+            {tab !== 'settings' && (
             <div className="pointer-events-none fixed inset-x-0 bottom-32 z-10 mx-auto flex max-w-(--k-app-max-w) justify-end pr-4">
               {/* Fab renders as an <a> by default, which has no native `disabled` — matches
                   ContentView's `.disabled(!store.canAddTask)` visually/interactively by hand
@@ -246,6 +228,7 @@ export default function App() {
                 onClick={active.length >= 3 ? undefined : () => setIsAddSheetOpen(true)}
               />
             </div>
+            )}
 
             <GlassTabbar
               items={[
@@ -259,6 +242,7 @@ export default function App() {
                   badge: failedBadgeCount,
                   onClick: () => setTab('failed'),
                 },
+                { id: 'settings', label: 'Settings', active: tab === 'settings', icon: <GearIcon className="h-4 w-4" />, onClick: () => setTab('settings') },
               ]}
             />
           </>

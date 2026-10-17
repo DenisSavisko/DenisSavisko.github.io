@@ -27,6 +27,9 @@ interface CKContainer {
   setUpAuth(): Promise<CKUserIdentity | null>;
   whenUserSignsIn(): Promise<CKUserIdentity>;
   whenUserSignsOut(): Promise<void>;
+  /// Clears the session and its cookie, but unlike CloudKit's own sign-out button doesn't
+  /// re-show the sign-in button — see signOut.ts.
+  signOut(): void;
   privateCloudDatabase: CKDatabase;
 }
 

@@ -1,12 +1,16 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
+import type { PaymentRequest } from '@stripe/stripe-js';
 import { Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
 import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
-import { createHold, StakingError } from './staking';
-import { createLinkCardSession, formatCard, getLinkedCard, type LinkedCard } from './paymentMethods';
+import { createHold, releaseHold, StakingError } from './staking';
+import { createStakedGoal } from './stakedGoal';
 import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
-import { STAKE_OPTIONS, type StakeOptionId } from './stripeConfig';
+import { STAKE_OPTIONS, stripePromise, type StakeOptionId } from './stripeConfig';
+
+const APPLE_PAY_LABEL = 'Goal Stake (refundable)';
 
 /// Mirrors AddTaskSheet's DeadlineOption exactly: a small set of relative offsets, not a
 /// precise date/time picker — goals are a rough estimate, not a reminder (see that enum's own
@@ -20,18 +24,26 @@ const DEADLINE_OPTIONS = [
 ] as const;
 type DeadlineOptionId = (typeof DEADLINE_OPTIONS)[number]['id'];
 
-/// Mirrors AddTaskSheet on iOS (PAYMENTS_PLAN.md v2). No Stripe Elements, no payment sheet,
-/// no card entry: a card is linked once at #link-card, and creating a staked goal is a plain
-/// call to create-hold that charges nothing at the time.
-export function AddGoalSheet({
-  opened,
-  onClose,
-  onCreated,
-}: {
+type AddGoalSheetProps = {
   opened: boolean;
   onClose: () => void;
   onCreated: (goal: Goal) => void;
-}) {
+};
+
+/// Each staked goal places its own hold with a card approved just for it: Apple Pay's sheet
+/// where the browser supports it, otherwise a card form step. Nothing is saved.
+export function AddGoalSheet(props: AddGoalSheetProps) {
+  return (
+    <Elements stripe={stripePromise}>
+      <AddGoalSheetContent {...props} />
+    </Elements>
+  );
+}
+
+function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [step, setStep] = useState<'form' | 'card'>('form');
   const [title, setTitle] = useState('');
   const [deadlineOptionId, setDeadlineOptionId] = useState<DeadlineOptionId>('1d'); // matches selectedDeadlineOption's default of .oneDay
   const [stakeOptionId, setStakeOptionId] = useState<StakeOptionId>('none');
@@ -39,12 +51,8 @@ export function AddGoalSheet({
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  // Mirrors AddTaskSheet's linkedCard/hasCheckedForLinkedCard pair — null covers both "no
-  // card" and "haven't looked yet", so the second flag is what tells the gate apart from the
-  // loading state.
-  const [linkedCard, setLinkedCard] = useState<LinkedCard | null>(null);
-  const [hasCheckedForLinkedCard, setHasCheckedForLinkedCard] = useState(false);
-  const [isLinkingCard, setIsLinkingCard] = useState(false);
+  const [paymentRequest, setPaymentRequest] = useState<PaymentRequest | null>(null);
+  const [canUseApplePay, setCanUseApplePay] = useState(false);
 
   const stakeOption = STAKE_OPTIONS.find((o) => o.id === stakeOptionId)!;
   const isStaked = stakeOption.cents > 0;
@@ -59,42 +67,16 @@ export function AddGoalSheet({
   }, [deadlineOptionId]);
 
   const isValid = title.trim() !== '';
-  const isBusy = isSaving || isLinkingCard;
 
-  // Checked every time the sheet opens rather than once on mount: the user may have linked a
-  // card since (the #link-card route takes over the whole page and comes back here), and
-  // create-hold rejects a stake with no card on file.
-  useEffect(() => {
-    if (!opened) return;
-    let cancelled = false;
-    setHasCheckedForLinkedCard(false);
-    ensureSignedIn()
-      .then(() => getLinkedCard())
-      .then((card) => {
-        if (cancelled) return;
-        if (!card) clearStakeSelection();
-        setLinkedCard(card);
-        setHasCheckedForLinkedCard(true);
-      })
-      .catch(() => {
-        // A lookup that failed (offline, transient) isn't proof there's no card, but on a
-        // first open there's nothing else to show — "Enable Stakes" re-checks anyway.
-        if (cancelled) return;
-        setHasCheckedForLinkedCard(true);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [opened]);
-
-  /// The stake picker is hidden whenever no card is on file, so a selection left behind from
-  /// before would be stuck — unchangeable and still submitted on Add.
-  function clearStakeSelection() {
-    setStakeOptionId('none');
-    setRequiresVerification(false);
-  }
+  // The Apple Pay handlers are registered once (the PaymentRequest effect only depends on
+  // `stripe`), so they'd otherwise see the form as it was back then. Reading through this
+  // ref gives them the current values without recreating the PaymentRequest, which would
+  // re-run canMakePayment() and make the Apple Pay path pop in late.
+  const latest = useRef({ title, deadline, requiresVerification, stakeOption });
+  latest.current = { title, deadline, requiresVerification, stakeOption };
 
   function reset() {
+    setStep('form');
     setTitle('');
     setDeadlineOptionId('1d');
     setStakeOptionId('none');
@@ -112,76 +94,193 @@ export function AddGoalSheet({
   /// runs first (if requested), before the hold, so the token exists to attach to the staked
   /// goal's record no matter how goal creation completes.
   async function obtainVerificationToken(): Promise<string | null> {
-    if (!requiresVerification) return null;
+    const current = latest.current;
+    if (!current.requiresVerification) return null;
     await ensureSignedIn();
-    return createVerification(title.trim(), stakeOption.cents || null, deadline);
+    return createVerification(current.title.trim(), current.stakeOption.cents || null, current.deadline);
   }
 
-  /// Mirrors GoalTask never being inserted locally until the backend hold is confirmed
-  /// (TaskStore.addStakedTask's own comment) — this only ever runs after create-hold has
-  /// already succeeded.
-  async function finishCreatingGoal(verificationToken: string | null, stake: { amountCents: number; paymentIntentId: string } | null) {
-    const container = getCloudKitContainer();
-    const record = await createGoal(container, {
-      title: title.trim(),
-      deadline,
+  async function createGoalRecord(verificationToken: string | null, stake: { amountCents: number; paymentIntentId: string } | null): Promise<Goal> {
+    const current = latest.current;
+    const record = await createGoal(getCloudKitContainer(), {
+      title: current.title.trim(),
+      deadline: current.deadline,
       verificationCode: verificationToken,
       stake,
     });
-    onCreated(mapRecord(record));
+    return mapRecord(record);
+  }
+
+  function finish(goal: Goal) {
+    onCreated(goal);
     close();
   }
 
-  /// Mirrors AddTaskSheet.handleEnableStakesTapped. Navigates to the #link-card route rather
-  /// than opening a new tab — it's the same static page, and coming back is a hash change.
-  async function handleEnableStakes() {
-    setIsLinkingCard(true);
+  /// Shared by both payment paths. See createStakedGoal for the guarantees: the goal exists
+  /// only once its hold is in place, and a failure after that cancels the hold.
+  async function stakeAndCreate(paymentMethodId: string): Promise<Goal> {
+    const current = latest.current;
+    const verificationToken = await obtainVerificationToken();
+    return createStakedGoal(
+      {
+        createHold: async (pm, cents, due) => {
+          await ensureSignedIn();
+          return createHold(pm, cents, due);
+        },
+        confirmCardPayment: async (clientSecret) => {
+          if (!stripe) return { status: null, errorMessage: 'Payment could not be confirmed.' };
+          const { error, paymentIntent } = await stripe.confirmCardPayment(clientSecret);
+          return {
+            status: paymentIntent?.status ?? null,
+            errorMessage: error ? (error.message ?? 'Payment could not be confirmed.') : null,
+          };
+        },
+        releaseHold,
+        createGoal: (stake) => createGoalRecord(verificationToken, stake),
+      },
+      paymentMethodId,
+      current.stakeOption.cents,
+      current.deadline
+    );
+  }
+
+  function messageFor(error: unknown): string {
+    if (error instanceof StakingError) {
+      return error.code === 'card_declined'
+        ? 'Your card was declined. Try a different one.'
+        : "You've added a lot of staked goals today. Try again tomorrow.";
+    }
+    return (error as Error).message || "Couldn't create this goal. Please try again.";
+  }
+
+  // Set up once `stripe` is ready, not only once a stake is picked, so canMakePayment()'s
+  // round trip has already resolved by then. The total starts at a placeholder and the
+  // effect below keeps it in sync; canMakePayment() only checks wallet availability.
+  useEffect(() => {
+    if (!stripe) {
+      setPaymentRequest(null);
+      setCanUseApplePay(false);
+      return;
+    }
+    const pr = stripe.paymentRequest({
+      country: 'US',
+      currency: 'usd',
+      total: { label: APPLE_PAY_LABEL, amount: STAKE_OPTIONS[1].cents },
+    });
+    let cancelled = false;
+    pr.canMakePayment().then((result) => {
+      if (!cancelled) setCanUseApplePay(!!result);
+    });
+    pr.on('paymentmethod', async (ev) => {
+      try {
+        const goal = await stakeAndCreate(ev.paymentMethod.id);
+        ev.complete('success');
+        finish(goal);
+      } catch (error) {
+        ev.complete('fail');
+        setIsSaving(false);
+        setErrorMessage(messageFor(error));
+      }
+    });
+    pr.on('cancel', () => {
+      setIsSaving(false);
+    });
+    setPaymentRequest(pr);
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stripe]);
+
+  // Keeps the Apple Pay sheet's total in step with the picked stake without recreating the
+  // PaymentRequest.
+  useEffect(() => {
+    paymentRequest?.update({ total: { label: APPLE_PAY_LABEL, amount: stakeOption.cents || STAKE_OPTIONS[1].cents } });
+  }, [paymentRequest, stakeOption.cents]);
+
+  /// Unstaked goals are a straight CloudKit write. Staked ones go to Apple Pay's sheet if the
+  /// browser has it, otherwise to the card step.
+  function handleAddTapped() {
+    if (!isValid) return;
+    setErrorMessage(null);
+    if (!isStaked) {
+      setIsSaving(true);
+      obtainVerificationToken()
+        .then((token) => createGoalRecord(token, null))
+        .then(finish)
+        .catch((error) => {
+          setErrorMessage(messageFor(error));
+          setIsSaving(false);
+        });
+      return;
+    }
+    if (canUseApplePay && paymentRequest) {
+      // Must run synchronously in this click handler, with no `await` before it: browsers
+      // only allow PaymentRequest.show() as a direct result of a user gesture. Everything
+      // after the user approves runs in the 'paymentmethod' handler above.
+      setIsSaving(true);
+      paymentRequest.show();
+      return;
+    }
+    setStep('card');
+  }
+
+  async function handlePayWithCard() {
+    if (!stripe || !elements) {
+      setErrorMessage('Payment is still loading. Try again in a moment.');
+      return;
+    }
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) return;
+
+    setIsSaving(true);
     setErrorMessage(null);
     try {
-      await ensureSignedIn();
-      const session = await createLinkCardSession();
-      window.location.hash = `#link-card/${session.token}`;
+      const { paymentMethod, error } = await stripe.createPaymentMethod({ type: 'card', card: cardElement });
+      if (error || !paymentMethod) throw new Error(error?.message ?? 'Card could not be processed.');
+      finish(await stakeAndCreate(paymentMethod.id));
     } catch (error) {
-      setErrorMessage((error as Error).message || "Couldn't start payment setup. Please try again.");
-    } finally {
-      setIsLinkingCard(false);
+      setErrorMessage(messageFor(error));
+      setIsSaving(false);
     }
   }
 
-  /// Mirrors AddTaskSheet.handleAddTapped: unstaked goals are a straight CloudKit write;
-  /// staked ones place the hold first and only write the record if it succeeds. Nothing here
-  /// shows payment UI — that all happened once, earlier, at #link-card.
-  function handleAddTapped() {
-    if (!isValid) return;
-    setIsSaving(true);
-    setErrorMessage(null);
-    obtainVerificationToken()
-      .then(async (verificationToken) => {
-        if (!isStaked) return finishCreatingGoal(verificationToken, null);
-        const hold = await createHold(stakeOption.cents, deadline);
-        return finishCreatingGoal(verificationToken, { amountCents: stakeOption.cents, paymentIntentId: hold.paymentIntentId });
-      })
-      .catch((error) => {
-        if (error instanceof StakingError) {
-          // All three codes mean the saved card can't back this stake — dropping linkedCard
-          // swaps the picker back for the "Enable Stakes" button, which is the route out.
-          setLinkedCard(null);
-          clearStakeSelection();
-          setErrorMessage(
-            error.code === 'card_declined'
-              ? 'Your card was declined. Add a different one to continue.'
-              : error.code === 'card_authentication_required'
-                ? 'Your bank needs to confirm this card again. Add it once more to continue.'
-                : 'No payment method yet. Add one to use stakes.'
-          );
-        } else {
-          setErrorMessage((error as Error).message || "Couldn't create this goal. Please try again.");
-        }
-        setIsSaving(false);
-      });
-  }
-
   if (!opened) return null;
+
+  if (step === 'card') {
+    return (
+      <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
+        <Navbar
+          title="Card Details"
+          left={
+            <button onClick={() => setStep('form')} disabled={isSaving} className="px-2 text-primary">
+              Back
+            </button>
+          }
+          right={
+            isSaving ? (
+              <div className="flex items-center justify-center px-2">
+                <Preloader />
+              </div>
+            ) : (
+              <button onClick={handlePayWithCard} className="px-2 font-semibold text-primary">
+                Hold {formatStakeCents(stakeOption.cents)}
+              </button>
+            )
+          }
+        />
+        <div className="px-4 pb-10 pt-6">
+          <p className="mb-4 px-2 text-center text-sm text-ios-secondary dark:text-ios-secondary-dark">
+            Charged only if you miss the deadline. Completing "{title.trim()}" in time releases it in full.
+          </p>
+          <div className="rounded-2xl border border-black/10 px-3 py-3 dark:border-white/15">
+            <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
+          </div>
+          {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
+        </div>
+      </Sheet>
+    );
+  }
 
   return (
     <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
@@ -196,7 +295,7 @@ export function AddGoalSheet({
           </button>
         }
         right={
-          isBusy ? (
+          isSaving ? (
             <div className="flex items-center justify-center px-2">
               <Preloader />
             </div>
@@ -221,44 +320,20 @@ export function AddGoalSheet({
           className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-base text-black outline-none dark:border-white/15 dark:text-white"
         />
 
-        {/* Mirrors AddTaskSheet's Section("Stake") — gated on a card being on file, since a
-            stake with nothing to collect against isn't a commitment. */}
+        {/* Mirrors AddTaskSheet's Section("Stake"). */}
         <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Stake</p>
-        {linkedCard ? (
-          <>
-            <Segmented strong>
-              {STAKE_OPTIONS.map((option) => (
-                <SegmentedButton
-                  key={option.id}
-                  active={stakeOptionId === option.id}
-                  onClick={() => setStakeOptionId(option.id)}
-                >
-                  {option.label}
-                </SegmentedButton>
-              ))}
-            </Segmented>
-            {isStaked && (
-              <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-                If you miss the deadline, {formatStakeCents(stakeOption.cents)} is charged to {formatCard(linkedCard)}.
-                Completing in time refunds it in full.
-              </p>
-            )}
-          </>
-        ) : hasCheckedForLinkedCard ? (
-          <>
-            <button
-              onClick={handleEnableStakes}
-              disabled={isBusy}
-              className="w-full rounded-2xl border border-black/10 px-4 py-3 text-base font-semibold text-primary dark:border-white/15"
-            >
-              Add a Payment Method
-            </button>
-            <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-              Nothing is charged now — only if you miss your own deadline.
-            </p>
-          </>
-        ) : (
-          <p className="px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">Checking for a payment method…</p>
+        <Segmented strong>
+          {STAKE_OPTIONS.map((option) => (
+            <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
+              {option.label}
+            </SegmentedButton>
+          ))}
+        </Segmented>
+        {isStaked && (
+          <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
+            {formatStakeCents(stakeOption.cents)} is held on your card when you add this goal and charged only if you miss the
+            deadline. Completing it in time releases it in full.
+          </p>
         )}
 
         {/* Mirrors AddTaskSheet's Section("Deadline") — a segmented control of relative

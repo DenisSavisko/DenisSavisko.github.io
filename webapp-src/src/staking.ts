@@ -8,13 +8,14 @@ export interface ReleaseHoldResponse {
 export interface CreateHoldResponse {
   goalId: string;
   paymentIntentId: string;
+  /// `requires_capture` once the hold is in place; `requires_action` when the card's bank
+  /// wants 3D Secure, which `clientSecret` lets the browser complete.
   status: string;
+  clientSecret: string | null;
 }
 
-/// The create-hold failures the app can act on, mirroring StakingError in
-/// MyMainGoals/Backend/StakingClient.swift. All three end at the same place — the user has
-/// to (re)link a card — but they need different copy.
-export type StakingErrorCode = 'card_not_linked' | 'card_authentication_required' | 'card_declined';
+/// The create-hold failures that get their own message instead of a generic one.
+export type StakingErrorCode = 'card_declined' | 'too_many_holds';
 
 export class StakingError extends Error {
   constructor(public readonly code: StakingErrorCode) {
@@ -32,20 +33,17 @@ async function stakingErrorCode(error: unknown): Promise<StakingErrorCode | null
   try {
     const body = await response.json();
     const code = body?.error;
-    return code === 'card_not_linked' || code === 'card_authentication_required' || code === 'card_declined' ? code : null;
+    return code === 'card_declined' || code === 'too_many_holds' ? code : null;
   } catch {
     return null;
   }
 }
 
-/// Mirrors StakingClient.createHold on iOS (PAYMENTS_PLAN.md v2): no payment token, no
-/// payment UI. The hold is placed server-side, off-session, against the card the user linked
-/// once via #link-card — so unlike v1 there's no client-side 3D Secure step left to run, and
-/// a card that needs the cardholder present comes back as card_authentication_required
-/// instead.
-export async function createHold(stakeAmountCents: number, deadline: Date): Promise<CreateHoldResponse> {
+/// Places the hold for one staked goal with the card the user just approved for it (Apple
+/// Pay or the card form). Nothing is saved; see create-hold's own comment.
+export async function createHold(paymentMethodId: string, stakeAmountCents: number, deadline: Date): Promise<CreateHoldResponse> {
   const { data, error } = await supabase.functions.invoke('create-hold', {
-    body: { stakeAmountCents, deadline: deadline.toISOString() },
+    body: { paymentMethodId, stakeAmountCents, deadline: deadline.toISOString() },
   });
   if (error) {
     const code = await stakingErrorCode(error);

@@ -35,7 +35,10 @@ export function GlassTabbar({ items }: { items: GlassTabbarItem[] }) {
         {items.map((item) => (
           <button key={item.id} onClick={item.onClick} className="flex flex-1 items-center justify-center">
             <span
-              className={`flex flex-col items-center gap-0.5 rounded-full px-6 py-1.5 text-[11px] font-medium ${
+              className={`flex flex-col items-center gap-0.5 rounded-full py-1.5 text-[11px] font-medium ${
+                // Four tabs at px-6 overflow a 375pt-wide iPhone; px-4 keeps "Settings" whole.
+                items.length > 3 ? 'px-4' : 'px-6'
+              } ${
                 item.active ? 'bg-primary/15 text-primary' : 'text-black/60 dark:text-white/60'
               }`}
             >

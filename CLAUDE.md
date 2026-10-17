@@ -25,11 +25,13 @@ Quick orientation:
   do — Stripe staking (`create-hold`/`release-hold` Edge Functions, defined in the
   `MyMainGoals` repo's `supabase/functions/`) and friend verification (`task_verifications`
   table + RPCs, token-keyed, no auth/ownership check server-side at all).
-- **Payments live here, not in the iOS app.** The app was rejected for showing Apple Pay
-  in-app, so the `#link-card/<token>` route (`LinkCardPage.tsx`) is now the only place a card
-  is ever collected, product-wide — iOS opens it in Safari. Read `PAYMENTS_PLAN.md` in the
-  `MyMainGoals` repo before touching it; it needs `mymaingoals.app` registered as an Apple Pay
-  domain in Stripe plus the domain-association file under `.well-known/`.
+- **Payments live here, not in the iOS app** (App Review rejected stakes in the app). Each
+  staked goal places its own hold with a card approved just for it in `AddGoalSheet.tsx`:
+  Apple Pay's sheet, or a card form where the browser has no Apple Pay. **No card is ever
+  saved** — on the web the backend account is anonymous per browser, so a saved card would
+  be usable by whoever signs in on that browser next. Apple Pay needs `mymaingoals.app`
+  registered as an Apple Pay domain in Stripe plus the domain-association file under
+  `.well-known/`.
 - **Build/deploy**: `cd webapp-src && npm run build` outputs to `../webapp/`. Push to `main`
   triggers the GitHub Actions workflow (`.github/workflows/`) that builds and deploys the
   whole site via `actions/deploy-pages`. Check with `gh run list -R DenisSavisko/DenisSavisko.github.io --limit 1`.
