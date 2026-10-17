@@ -168,8 +168,8 @@ export default function App() {
             {authState.status === 'loading'
               ? 'Loading…'
               : token
-                ? 'Sign in with your Apple ID to continue.'
-                : 'Sign in with your Apple ID to use MyMainGoals.'}
+                ? "Sign in to confirm your friend's goal."
+                : 'Focus on just three goals.'}
           </Block>
         ) : (
           <>
