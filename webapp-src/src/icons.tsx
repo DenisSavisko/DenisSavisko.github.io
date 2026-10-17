@@ -73,3 +73,18 @@ export function GearIcon(props: SVGProps<SVGSVGElement>) {
     props
   );
 }
+
+export function IphoneIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(
+    <>
+      <rect x="6.5" y="2.5" width="11" height="19" rx="2.5" />
+      <path d="M10.5 18.5h3" />
+    </>,
+    props
+  );
+}
+
+/// The "opens outside" arrow, like SF Symbols' arrow.up.forward.
+export function ArrowUpForwardIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(<path d="M8 16 16 8M9 8h7v7" />, props);
+}

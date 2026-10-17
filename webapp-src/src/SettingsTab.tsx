@@ -1,17 +1,20 @@
 import { useState } from 'react';
-import { BlockFooter, List, ListItem } from 'konsta/react';
+import { BlockFooter, BlockHeader, List, ListItem } from 'konsta/react';
 import { getCloudKitContainer } from './cloudkit';
 import { saveAuthTokenCookie } from './cloudkitAuthPersistence';
 import { supabase } from './supabase';
 import { signOut } from './signOut';
+import { ArrowUpForwardIcon, CheckCircleIcon, IphoneIcon } from './icons';
 
 /// Opens the iPhone app when it's installed, otherwise the App Store. It has to be a separate
 /// host (the mymaingoals-open repo): Safari keeps taps on mymaingoals.app itself in the
 /// browser, so only a link to another domain can hand off to the app.
 const IPHONE_APP_URL = 'https://open.mymaingoals.app/';
 
-/// Mirrors the iOS app's Settings tab, with what the web needs instead: a way to sign out
-/// (the web has no other), and a link to the iPhone app.
+/// Laid out like the iOS app's Settings so the two feel the same: Account first, then the link
+/// to the other app (here the iPhone app, there the web version), styled as a link that
+/// leaves the browser. Lower on the screen also keeps that link in easy thumb reach for the
+/// common round trip: stake a goal here, then hop back to the app.
 export function SettingsTab() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -28,10 +31,11 @@ export function SettingsTab() {
 
   return (
     <>
+      <BlockHeader inset className="uppercase">
+        Account
+      </BlockHeader>
       <List strong inset>
-        <ListItem link href={IPHONE_APP_URL} title="MyMainGoals for iPhone" />
-      </List>
-      <List strong inset>
+        <ListItem title="Signed in with Apple ID" media={<CheckCircleIcon className="h-6 w-6 text-green-500" />} />
         <ListItem
           link
           chevron={false}
@@ -39,7 +43,18 @@ export function SettingsTab() {
           onClick={isSigningOut ? undefined : handleSignOut}
         />
       </List>
-      <BlockFooter>Your goals stay in your iCloud and come back when you sign in again.</BlockFooter>
+      <BlockFooter inset>Your goals stay in your iCloud and come back when you sign in again.</BlockFooter>
+
+      <List strong inset>
+        <ListItem
+          link
+          chevron={false}
+          href={IPHONE_APP_URL}
+          media={<IphoneIcon className="h-6 w-6 text-primary" />}
+          title={<span className="text-primary">MyMainGoals for iPhone</span>}
+          after={<ArrowUpForwardIcon className="h-4 w-4 text-ios-secondary dark:text-ios-secondary-dark" />}
+        />
+      </List>
     </>
   );
 }
