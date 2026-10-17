@@ -5,12 +5,13 @@ import { saveAuthTokenCookie } from './cloudkitAuthPersistence';
 import { supabase } from './supabase';
 import { signOut } from './signOut';
 
-const APP_STORE_URL = 'https://apps.apple.com/app/id6806742917';
+/// Opens the iPhone app when it's installed, otherwise the App Store. It has to be a separate
+/// host (the mymaingoals-open repo): Safari keeps taps on mymaingoals.app itself in the
+/// browser, so only a link to another domain can hand off to the app.
+const IPHONE_APP_URL = 'https://open.mymaingoals.app/';
 
 /// Mirrors the iOS app's Settings tab, with what the web needs instead: a way to sign out
-/// (the web has no other), and a link to the iPhone app. An App Store link rather than an
-/// "open the app" link: a web page can't reliably open an app, and on an iPhone that already
-/// has it the App Store page shows Open anyway.
+/// (the web has no other), and a link to the iPhone app.
 export function SettingsTab() {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
@@ -28,7 +29,7 @@ export function SettingsTab() {
   return (
     <>
       <List strong inset>
-        <ListItem link href={APP_STORE_URL} target="_blank" title="Get the iPhone App" />
+        <ListItem link href={IPHONE_APP_URL} title="Get the iPhone App" />
       </List>
       <List strong inset>
         <ListItem
