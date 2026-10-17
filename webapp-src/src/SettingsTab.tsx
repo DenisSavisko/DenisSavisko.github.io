@@ -29,7 +29,7 @@ export function SettingsTab() {
   return (
     <>
       <List strong inset>
-        <ListItem link href={IPHONE_APP_URL} title="Get the iPhone App" />
+        <ListItem link href={IPHONE_APP_URL} title="MyMainGoals for iPhone" />
       </List>
       <List strong inset>
         <ListItem
