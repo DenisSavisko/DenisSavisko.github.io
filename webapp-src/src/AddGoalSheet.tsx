@@ -62,9 +62,8 @@ type AddGoalSheetProps = {
   onCreated: (goal: Goal) => void;
 };
 
-// Every step's content scrolls under its fixed top bar, so the bar's buttons stay reachable
-// however tall the content gets on a small phone.
-const SCROLL_BODY = 'max-h-[calc(100dvh-8rem)] overflow-y-auto px-4 pb-10 pt-4';
+// Padding shared by every step's content, below its top bar.
+const STEP_BODY = 'px-4 pb-10 pt-4';
 
 /// Each staked goal places its own hold with a card approved just for it: Apple Pay's sheet
 /// where the browser supports it, otherwise a card form step. Nothing is saved.
@@ -343,7 +342,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
             )
           }
         />
-        <div className={SCROLL_BODY}>
+        <div className={STEP_BODY}>
           <input
             type="email"
             autoComplete="email"
@@ -372,7 +371,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
             </button>
           }
         />
-        <div className={SCROLL_BODY}>
+        <div className={STEP_BODY}>
           {/* Exactly this text, checkbox included, is sent with the hold as the consent
               record (stakeConsent.ts). Full-size text, as the legal review asked. */}
           <p className="text-center text-lg font-semibold text-black dark:text-white">"{title.trim()}"</p>
@@ -417,7 +416,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         }
       />
 
-      <div className={SCROLL_BODY}>
+      <div className={STEP_BODY}>
         {/* Plain input styled to match Stake/Deadline's label+control pattern below, rather
             than Konsta's ListInput/List card styling (its own label position/inset margin
             didn't line up with everything else on this sheet). */}
