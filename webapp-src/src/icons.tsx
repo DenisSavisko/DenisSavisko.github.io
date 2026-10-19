@@ -88,3 +88,23 @@ export function IphoneIcon(props: SVGProps<SVGSVGElement>) {
 export function ArrowUpForwardIcon(props: SVGProps<SVGSVGElement>) {
   return svg(<path d="M8 16 16 8M9 8h7v7" />, props);
 }
+
+export function EnvelopeIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(
+    <>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="m3.5 7 8.5 6 8.5-6" />
+    </>,
+    props
+  );
+}
+
+export function DocumentIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(
+    <>
+      <path d="M14 3H7.5A2.5 2.5 0 0 0 5 5.5v13A2.5 2.5 0 0 0 7.5 21h9a2.5 2.5 0 0 0 2.5-2.5V8z" />
+      <path d="M14 3v5h5M9 13h6M9 17h6" />
+    </>,
+    props
+  );
+}

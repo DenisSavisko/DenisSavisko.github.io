@@ -62,21 +62,24 @@ export function useBackgroundSync(goalsState: GoalsState, reload: () => void): v
       // release-hold call that didn't confirm the first time (no network when mark-done ran,
       // or the tab closed right after).
       const pendingRelease = goalsPendingRelease(goalsState.goals);
+      const released = new Set<string>();
       for (const goal of pendingRelease) {
         if (cancelled) return;
         try {
           const response = await releaseHold(goal.stripePaymentIntentId!);
           await updateGoalStakeStatus(container, goal, response.status);
+          released.add(goal.id);
           didChangeAnything = true;
         } catch {
-          // Still pending — retried next cycle.
+          // Still pending — retried next cycle. Past the deadline release-hold refuses for
+          // good, so the status lookup below is what settles it (charged, or freely released).
         }
       }
 
       // Mirrors StakeSync.syncHeldStatuses — picks up server-side status changes with no
       // client call at all (the expiry cron capturing a stake past deadline+grace). Excludes
-      // goals just handled above to avoid double-processing them in the same pass.
-      const justHandled = new Set(pendingRelease.map((g) => g.id));
+      // goals just released above to avoid double-processing them in the same pass.
+      const justHandled = released;
       const unresolvedStaked = goalsState.goals.filter(
         (g) => g.stripePaymentIntentId && (g.stakeStatus === 'held' || g.stakeStatus == null) && !justHandled.has(g.id)
       );

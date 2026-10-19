@@ -15,7 +15,8 @@ export interface CreateHoldResponse {
 }
 
 /// The create-hold failures that get their own message instead of a generic one.
-export type StakingErrorCode = 'card_declined' | 'too_many_holds';
+const STAKING_ERROR_CODES = ['card_declined', 'too_many_holds', 'too_many_attempts', 'stakes_blocked', 'invalid_email'] as const;
+export type StakingErrorCode = (typeof STAKING_ERROR_CODES)[number];
 
 export class StakingError extends Error {
   constructor(public readonly code: StakingErrorCode) {
@@ -33,17 +34,35 @@ async function stakingErrorCode(error: unknown): Promise<StakingErrorCode | null
   try {
     const body = await response.json();
     const code = body?.error;
-    return code === 'card_declined' || code === 'too_many_holds' ? code : null;
+    return (STAKING_ERROR_CODES as readonly string[]).includes(code) ? (code as StakingErrorCode) : null;
   } catch {
     return null;
   }
 }
 
+/// What the stake's emails need, plus proof the payer agreed to the Stake Terms.
+export interface HoldDetails {
+  email: string;
+  goalTitle: string;
+  termsVersion: string;
+}
+
 /// Places the hold for one staked goal with the card the user just approved for it (Apple
 /// Pay or the card form). Nothing is saved; see create-hold's own comment.
-export async function createHold(paymentMethodId: string, stakeAmountCents: number, deadline: Date): Promise<CreateHoldResponse> {
+export async function createHold(
+  paymentMethodId: string,
+  stakeAmountCents: number,
+  deadline: Date,
+  details: HoldDetails
+): Promise<CreateHoldResponse> {
   const { data, error } = await supabase.functions.invoke('create-hold', {
-    body: { paymentMethodId, stakeAmountCents, deadline: deadline.toISOString() },
+    body: {
+      paymentMethodId,
+      stakeAmountCents,
+      deadline: deadline.toISOString(),
+      ...details,
+      timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    },
   });
   if (error) {
     const code = await stakingErrorCode(error);
@@ -80,4 +99,32 @@ export async function getStakeStatuses(paymentIntentIds: string[]): Promise<Map<
   if (error) throw error;
   const rows = data as StakedGoalStatusRow[];
   return new Map(rows.map((row) => [row.stripe_payment_intent_id, row.status]));
+}
+
+export interface FreeReleaseInfo {
+  status: string;
+  amountCents: number;
+  goalTitle: string | null;
+  deadline: string;
+  chargeAt: string;
+  freeReleaseAvailable: boolean;
+  nextFreeReleaseAt: string | null;
+}
+
+/// What a free release would do for this stake, without doing it.
+export async function getFreeReleaseInfo(paymentIntentId: string): Promise<FreeReleaseInfo> {
+  const { data, error } = await supabase.functions.invoke('free-release', {
+    body: { paymentIntentId, check: true },
+  });
+  if (error) throw error;
+  return data as FreeReleaseInfo;
+}
+
+/// Lets go of a missed goal's hold, using up the free release (one every 30 days).
+export async function freeRelease(paymentIntentId: string): Promise<ReleaseHoldResponse> {
+  const { data, error } = await supabase.functions.invoke('free-release', {
+    body: { paymentIntentId },
+  });
+  if (error) throw error;
+  return data as ReleaseHoldResponse;
 }

@@ -20,3 +20,12 @@ export const STAKE_OPTIONS = [
   { id: 'hundred', label: '$100', cents: 10000 },
 ] as const;
 export type StakeOptionId = (typeof STAKE_OPTIONS)[number]['id'];
+
+// Must match create-hold's TERMS_VERSION (supabase/functions/_shared/stakeRules.ts), which
+// refuses a hold agreed to under any other version. Bump both when the Terms change.
+export const TERMS_VERSION = '2026-10-18';
+export const TERMS_URL = '/webapp/terms/';
+
+// Mirrors CAPTURE_DELAY_MS in supabase/functions/_shared/stakeRules.ts: a missed goal's hold
+// is charged this long after its deadline. Only used to show when.
+export const CHARGE_DELAY_MS = 24 * 60 * 60 * 1000;

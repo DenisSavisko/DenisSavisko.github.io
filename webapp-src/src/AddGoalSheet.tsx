@@ -8,9 +8,30 @@ import { ensureSignedIn } from './supabase';
 import { createHold, releaseHold, StakingError } from './staking';
 import { createStakedGoal } from './stakedGoal';
 import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
-import { STAKE_OPTIONS, stripePromise, type StakeOptionId } from './stripeConfig';
+import { STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
 
-const APPLE_PAY_LABEL = 'Goal Stake (refundable)';
+const APPLE_PAY_LABEL = 'Goal Stake (charged if missed)';
+
+// The card form's email, remembered on this browser only as a convenience. Apple Pay hands
+// over the payer's email itself.
+const EMAIL_STORAGE_KEY = 'stakeEmail';
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function rememberedEmail(): string {
+  try {
+    return localStorage.getItem(EMAIL_STORAGE_KEY) ?? '';
+  } catch {
+    return '';
+  }
+}
+
+function rememberEmail(email: string) {
+  try {
+    localStorage.setItem(EMAIL_STORAGE_KEY, email);
+  } catch {
+    // Private mode or blocked storage: the field just starts empty next time.
+  }
+}
 
 /// Mirrors AddTaskSheet's DeadlineOption exactly: a small set of relative offsets, not a
 /// precise date/time picker — goals are a rough estimate, not a reminder (see that enum's own
@@ -48,6 +69,8 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
   const [deadlineOptionId, setDeadlineOptionId] = useState<DeadlineOptionId>('1d'); // matches selectedDeadlineOption's default of .oneDay
   const [stakeOptionId, setStakeOptionId] = useState<StakeOptionId>('none');
   const [requiresVerification, setRequiresVerification] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [email, setEmail] = useState(rememberedEmail);
   const [isSaving, setIsSaving] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -66,7 +89,8 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deadlineOptionId]);
 
-  const isValid = title.trim() !== '';
+  // A stake also needs the Terms checkbox, ticked fresh for each one.
+  const isValid = title.trim() !== '' && (!isStaked || agreedToTerms);
 
   // The Apple Pay handlers are registered once (the PaymentRequest effect only depends on
   // `stripe`), so they'd otherwise see the form as it was back then. Reading through this
@@ -81,6 +105,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
     setDeadlineOptionId('1d');
     setStakeOptionId('none');
     setRequiresVerification(false);
+    setAgreedToTerms(false);
     setErrorMessage(null);
     setIsSaving(false);
   }
@@ -118,14 +143,18 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
   /// Shared by both payment paths. See createStakedGoal for the guarantees: the goal exists
   /// only once its hold is in place, and a failure after that cancels the hold.
-  async function stakeAndCreate(paymentMethodId: string): Promise<Goal> {
+  async function stakeAndCreate(paymentMethodId: string, payerEmail: string): Promise<Goal> {
     const current = latest.current;
     const verificationToken = await obtainVerificationToken();
     return createStakedGoal(
       {
         createHold: async (pm, cents, due) => {
           await ensureSignedIn();
-          return createHold(pm, cents, due);
+          return createHold(pm, cents, due, {
+            email: payerEmail,
+            goalTitle: current.title.trim(),
+            termsVersion: TERMS_VERSION,
+          });
         },
         confirmCardPayment: async (clientSecret) => {
           if (!stripe) return { status: null, errorMessage: 'Payment could not be confirmed.' };
@@ -146,9 +175,18 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
   function messageFor(error: unknown): string {
     if (error instanceof StakingError) {
-      return error.code === 'card_declined'
-        ? 'Your card was declined. Try a different one.'
-        : "You've added a lot of staked goals today. Try again tomorrow.";
+      switch (error.code) {
+        case 'card_declined':
+          return 'Your card was declined. Try a different one.';
+        case 'too_many_holds':
+          return "You've added a lot of staked goals today. Try again tomorrow.";
+        case 'too_many_attempts':
+          return 'Too many declined cards today. Try again tomorrow.';
+        case 'stakes_blocked':
+          return "Stakes aren't available for this card or email. Contact support@mymaingoals.app.";
+        case 'invalid_email':
+          return 'Enter a valid email address.';
+      }
     }
     return (error as Error).message || "Couldn't create this goal. Please try again.";
   }
@@ -166,6 +204,8 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
       country: 'US',
       currency: 'usd',
       total: { label: APPLE_PAY_LABEL, amount: STAKE_OPTIONS[1].cents },
+      // Where the stake's notices go (hold placed, goal missed, charged).
+      requestPayerEmail: true,
     });
     let cancelled = false;
     pr.canMakePayment().then((result) => {
@@ -173,7 +213,8 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
     });
     pr.on('paymentmethod', async (ev) => {
       try {
-        const goal = await stakeAndCreate(ev.paymentMethod.id);
+        if (!ev.payerEmail) throw new StakingError('invalid_email');
+        const goal = await stakeAndCreate(ev.paymentMethod.id, ev.payerEmail);
         ev.complete('success');
         finish(goal);
       } catch (error) {
@@ -232,13 +273,19 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
     }
     const cardElement = elements.getElement(CardElement);
     if (!cardElement) return;
+    const payerEmail = email.trim();
+    if (!EMAIL_PATTERN.test(payerEmail)) {
+      setErrorMessage('Enter a valid email address.');
+      return;
+    }
+    rememberEmail(payerEmail);
 
     setIsSaving(true);
     setErrorMessage(null);
     try {
       const { paymentMethod, error } = await stripe.createPaymentMethod({ type: 'card', card: cardElement });
       if (error || !paymentMethod) throw new Error(error?.message ?? 'Card could not be processed.');
-      finish(await stakeAndCreate(paymentMethod.id));
+      finish(await stakeAndCreate(paymentMethod.id, payerEmail));
     } catch (error) {
       setErrorMessage(messageFor(error));
       setIsSaving(false);
@@ -271,8 +318,17 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         />
         <div className="px-4 pb-10 pt-6">
           <p className="mb-4 px-2 text-center text-sm text-ios-secondary dark:text-ios-secondary-dark">
-            Charged only if you miss the deadline. Completing "{title.trim()}" in time releases it in full.
+            Miss the deadline and {formatStakeCents(stakeOption.cents)} is charged. Mark "{title.trim()}" done in time and the
+            hold is released.
           </p>
+          <input
+            type="email"
+            autoComplete="email"
+            placeholder="Email for stake notices"
+            value={email}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            className="mb-3 w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-base text-black outline-none dark:border-white/15 dark:text-white"
+          />
           <div className="rounded-2xl border border-black/10 px-3 py-3 dark:border-white/15">
             <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
           </div>
@@ -330,10 +386,27 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           ))}
         </Segmented>
         {isStaked && (
-          <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-            {formatStakeCents(stakeOption.cents)} is held on your card when you add this goal and charged only if you miss the
-            deadline. Completing it in time releases it in full.
-          </p>
+          <>
+            <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
+              {formatStakeCents(stakeOption.cents)} is held on your card when you add this goal. Miss the deadline and it's
+              charged. Mark it done in time and the hold is released.
+            </p>
+            <label className="mt-3 flex items-start gap-3 px-4 text-sm text-black dark:text-white">
+              <input
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAgreedToTerms(e.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
+              />
+              <span>
+                I'm 18 or older and agree to the{' '}
+                <a href={TERMS_URL} target="_blank" rel="noopener" className="text-primary underline">
+                  Stake Terms
+                </a>
+                .
+              </span>
+            </label>
+          </>
         )}
 
         {/* Mirrors AddTaskSheet's Section("Deadline") — a segmented control of relative

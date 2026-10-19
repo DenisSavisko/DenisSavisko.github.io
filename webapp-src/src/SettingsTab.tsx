@@ -4,7 +4,9 @@ import { getCloudKitContainer } from './cloudkit';
 import { saveAuthTokenCookie } from './cloudkitAuthPersistence';
 import { supabase } from './supabase';
 import { signOut } from './signOut';
-import { ArrowUpForwardIcon, CheckCircleIcon, IphoneIcon } from './icons';
+import { ArrowUpForwardIcon, CheckCircleIcon, DocumentIcon, EnvelopeIcon, IphoneIcon } from './icons';
+import { generalSupportMailto } from './support';
+import { TERMS_URL } from './stripeConfig';
 
 /// Opens the iPhone app when it's installed, otherwise the App Store. It has to be a separate
 /// host (the mymaingoals-open repo): Safari keeps taps on mymaingoals.app itself in the
@@ -52,6 +54,28 @@ export function SettingsTab() {
           href={IPHONE_APP_URL}
           media={<IphoneIcon className="h-6 w-6 text-primary" />}
           title={<span className="text-primary">MyMainGoals for iPhone</span>}
+          after={<ArrowUpForwardIcon className="h-4 w-4 text-ios-secondary dark:text-ios-secondary-dark" />}
+        />
+      </List>
+
+      <BlockHeader inset className="uppercase">
+        Help
+      </BlockHeader>
+      <List strong inset>
+        <ListItem
+          link
+          chevron={false}
+          href={generalSupportMailto()}
+          media={<EnvelopeIcon className="h-6 w-6 text-primary" />}
+          title={<span className="text-primary">Contact Support</span>}
+        />
+        <ListItem
+          link
+          chevron={false}
+          href={TERMS_URL}
+          target="_blank"
+          media={<DocumentIcon className="h-6 w-6 text-primary" />}
+          title={<span className="text-primary">Stake Terms</span>}
           after={<ArrowUpForwardIcon className="h-4 w-4 text-ios-secondary dark:text-ios-secondary-dark" />}
         />
       </List>
