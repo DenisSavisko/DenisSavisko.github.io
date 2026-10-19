@@ -22,8 +22,8 @@ Quick orientation:
 - **Data**: CloudKit JS talks directly to the same private CloudKit database the iOS app
   syncs to (via SwiftData's automatic mirroring) — no backend of ours in that path at all.
 - **Backend**: the same Supabase project the iOS app uses, for the two things CloudKit can't
-  do — Stripe staking (`create-hold`/`release-hold` Edge Functions, defined in the
-  `MyMainGoals` repo's `supabase/functions/`) and friend verification (`task_verifications`
+  do — Stripe staking (`create-hold`/`release-hold`/`free-release` Edge Functions, defined
+  in the private `mymaingoals-backend` repo's `supabase/functions/`) and friend verification (`task_verifications`
   table + RPCs, token-keyed, no auth/ownership check server-side at all).
 - **Payments live here, not in the iOS app** (App Review rejected stakes in the app). Each
   staked goal places its own hold with a card approved just for it in `AddGoalSheet.tsx`:
@@ -57,7 +57,7 @@ work on an iPhone) has to go through the user, not a screenshot loop.
   built CSS, not just visually.
 - `supabase.functions.invoke()` (Edge Functions) needs CORS added by hand — unlike
   `supabase.rpc()`, which has it by default. See `supabase/functions/_shared/cors.ts` in the
-  `MyMainGoals` repo.
+  `mymaingoals-backend` repo.
 - CloudKit JS: the real API is `saveRecords`/`deleteRecords` (plural, batch), not
   `saveRecord`/`deleteRecord`. Every call needs an explicit `zoneID` (`CORE_DATA_ZONE_ID` in
   `cloudkitConfig.ts`) — an omitted one silently targets the empty default zone instead of

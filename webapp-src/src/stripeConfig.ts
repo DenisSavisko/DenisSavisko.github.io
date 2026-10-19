@@ -10,7 +10,7 @@ export const STRIPE_PUBLISHABLE_KEY =
 export const stripePromise = loadStripe(STRIPE_PUBLISHABLE_KEY);
 
 // Mirrors AddTaskSheet's StakeOption (MyMainGoals/AddTaskSheet.swift) and create-hold's
-// ALLOWED_STAKE_AMOUNT_CENTS (supabase/functions/create-hold/index.ts) exactly — these three
+// ALLOWED_STAKE_AMOUNT_CENTS (mymaingoals-backend repo, supabase/functions/create-hold/index.ts) exactly — these three
 // have to stay in sync; there's no shared source between the Swift/TS/Deno codebases.
 export const STAKE_OPTIONS = [
   { id: 'none', label: 'None', cents: 0 },
@@ -21,11 +21,11 @@ export const STAKE_OPTIONS = [
 ] as const;
 export type StakeOptionId = (typeof STAKE_OPTIONS)[number]['id'];
 
-// Must match create-hold's TERMS_VERSION (supabase/functions/_shared/stakeRules.ts), which
+// Must match create-hold's TERMS_VERSION (mymaingoals-backend repo, supabase/functions/_shared/stakeRules.ts), which
 // refuses a hold agreed to under any other version. Bump both when the Terms change.
 export const TERMS_VERSION = '2026-10-18';
 export const TERMS_URL = '/webapp/terms/';
 
-// Mirrors CAPTURE_DELAY_MS in supabase/functions/_shared/stakeRules.ts: a missed goal's hold
+// Mirrors CAPTURE_DELAY_MS in the mymaingoals-backend repo's supabase/functions/_shared/stakeRules.ts: a missed goal's hold
 // is charged this long after its deadline. Only used to show when.
 export const CHARGE_DELAY_MS = 24 * 60 * 60 * 1000;

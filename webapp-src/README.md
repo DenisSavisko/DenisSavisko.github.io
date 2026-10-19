@@ -71,7 +71,7 @@ PostgREST, CORS-enabled by default), a `supabase.functions.invoke()` call needs 
 function to handle `OPTIONS` and set CORS headers itself — `create-hold`/`release-hold`
 originally only had to work from native iOS (no CORS needed at all) and broke silently
 ("Failed to send a request to edge function") the first time this web client called them.
-See `supabase/functions/_shared/cors.ts` in the `MyMainGoals` repo — every Edge Function this
+See `supabase/functions/_shared/cors.ts` in the `mymaingoals-backend` repo — every Edge Function this
 web client calls needs that same `OPTIONS` short-circuit + headers-on-every-response
 treatment, including any new one added later.
 
