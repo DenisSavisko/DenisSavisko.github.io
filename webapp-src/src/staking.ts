@@ -15,7 +15,14 @@ export interface CreateHoldResponse {
 }
 
 /// The create-hold failures that get their own message instead of a generic one.
-const STAKING_ERROR_CODES = ['card_declined', 'too_many_holds', 'too_many_attempts', 'stakes_blocked', 'invalid_email'] as const;
+const STAKING_ERROR_CODES = [
+  'card_declined',
+  'too_many_holds',
+  'too_many_attempts',
+  'stakes_blocked',
+  'invalid_email',
+  'non_us_card',
+] as const;
 export type StakingErrorCode = (typeof STAKING_ERROR_CODES)[number];
 
 export class StakingError extends Error {
@@ -45,6 +52,8 @@ export interface HoldDetails {
   email: string;
   goalTitle: string;
   termsVersion: string;
+  /// Exactly what the checkout showed and the payer ticked (stakeConsent.ts's consentRecord).
+  consentText: string;
 }
 
 /// Places the hold for one staked goal with the card the user just approved for it (Apple

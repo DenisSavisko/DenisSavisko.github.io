@@ -8,6 +8,7 @@ import { ensureSignedIn } from './supabase';
 import { createHold, releaseHold, StakingError } from './staking';
 import { createStakedGoal } from './stakedGoal';
 import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
+import { consentRecord, stakeSummary } from './stakeConsent';
 import { PRIVACY_URL, STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
 
 // Apple Pay shows the total as "Pay <label>", and Apple's guidelines want the business name
@@ -101,6 +102,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
   // A stake also needs the Terms checkbox, ticked fresh for each one.
   const isValid = title.trim() !== '' && (!isStaked || agreedToTerms);
+  const summary = stakeSummary(stakeOption.cents, deadline, requiresVerification);
 
   // The Apple Pay handlers are registered once (the PaymentRequest effect only depends on
   // `stripe`), so they'd otherwise see the form as it was back then. Reading through this
@@ -164,6 +166,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
             email: payerEmail,
             goalTitle: current.title.trim(),
             termsVersion: TERMS_VERSION,
+            consentText: consentRecord(stakeSummary(cents, due, current.requiresVerification)),
           });
         },
         confirmCardPayment: async (clientSecret) => {
@@ -196,6 +199,8 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           return "Stakes aren't available for this card or email. Contact support@mymaingoals.app.";
         case 'invalid_email':
           return 'Enter a valid email address.';
+        case 'non_us_card':
+          return 'Stakes can only be placed with a US-issued card.';
       }
     }
     return (error as Error).message || "Couldn't create this goal. Please try again.";
@@ -395,33 +400,6 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
             </SegmentedButton>
           ))}
         </Segmented>
-        {isStaked && (
-          <>
-            <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
-              {formatStakeCents(stakeOption.cents)} is held on your card when you add this goal. Miss the deadline and it's
-              charged. Mark it done in time and the hold is released.
-            </p>
-            <label className="mt-3 flex items-start gap-3 px-4 text-sm text-black dark:text-white">
-              <input
-                type="checkbox"
-                checked={agreedToTerms}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAgreedToTerms(e.target.checked)}
-                className="mt-0.5 h-5 w-5 shrink-0 accent-primary"
-              />
-              <span>
-                I'm 18 or older and agree to the{' '}
-                <a href={TERMS_URL} target="_blank" rel="noopener" className="text-primary underline">
-                  Stake Terms
-                </a>{' '}
-                and{' '}
-                <a href={PRIVACY_URL} target="_blank" rel="noopener" className="text-primary underline">
-                  Privacy Policy
-                </a>
-                .
-              </span>
-            </label>
-          </>
-        )}
 
         {/* Mirrors AddTaskSheet's Section("Deadline") — a segmented control of relative
             offsets, not a date/time picker. */}
@@ -455,8 +433,53 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           </p>
         )}
 
+        {/* Last, right above where the Add tap goes: what the stake means, in full-size text,
+            with the deadline and friend rule as picked above. Exactly this text, checkbox
+            included, is sent with the hold as the consent record (stakeConsent.ts). */}
+        {isStaked && <StakeConsent summary={summary} agreed={agreedToTerms} onChange={setAgreedToTerms} />}
+
         {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
       </div>
     </Sheet>
+  );
+}
+
+function StakeConsent({
+  summary,
+  agreed,
+  onChange,
+}: {
+  summary: ReturnType<typeof stakeSummary>;
+  agreed: boolean;
+  onChange: (agreed: boolean) => void;
+}) {
+  const link = 'text-primary underline';
+  return (
+    <div className="mt-6 rounded-2xl border border-black/10 px-4 py-4 text-base text-black dark:border-white/15 dark:text-white">
+      <p>
+        <strong>{summary.hold}</strong> Mark this goal done by <strong>{summary.deadline}</strong>.
+        {summary.doneBy && ` ${summary.doneBy}`} <strong>{summary.charge}</strong> {summary.refunds}
+      </p>
+      {summary.debitNote && <p className="mt-2">{summary.debitNote}</p>}
+      <label className="mt-4 flex items-start gap-3">
+        <input
+          type="checkbox"
+          checked={agreed}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)}
+          className="mt-1 h-5 w-5 shrink-0 accent-primary"
+        />
+        <span>
+          I'm 18 or older, I'm in the United States, and I agree to the{' '}
+          <a href={TERMS_URL} target="_blank" rel="noopener" className={link}>
+            Stake Terms
+          </a>{' '}
+          (including the charge described above). I've read the{' '}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener" className={link}>
+            Privacy Policy
+          </a>
+          .
+        </span>
+      </label>
+    </div>
   );
 }
