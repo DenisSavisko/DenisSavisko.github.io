@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { BlockFooter, BlockHeader, List, ListItem } from 'konsta/react';
+import { BlockHeader, List, ListItem } from 'konsta/react';
 import { getCloudKitContainer } from './cloudkit';
 import { saveAuthTokenCookie } from './cloudkitAuthPersistence';
 import { supabase } from './supabase';
@@ -45,7 +45,6 @@ export function SettingsTab() {
           onClick={isSigningOut ? undefined : handleSignOut}
         />
       </List>
-      <BlockFooter inset>Your goals stay in your iCloud and come back when you sign in again.</BlockFooter>
 
       <List strong inset>
         <ListItem

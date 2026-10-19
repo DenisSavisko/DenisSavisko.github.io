@@ -10,7 +10,17 @@ import { createStakedGoal } from './stakedGoal';
 import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
 import { PRIVACY_URL, STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
 
-const APPLE_PAY_LABEL = 'Goal hold (charged only if deadline missed)';
+// Apple Pay shows the total as "Pay <label>", and Apple's guidelines want the business name
+// there; what the amount is for goes on its own line above it.
+const APPLE_PAY_TOTAL_LABEL = 'MyMainGoals';
+const APPLE_PAY_ITEM_LABEL = 'Goal hold, charged only if deadline missed';
+
+function applePayAmounts(cents: number) {
+  return {
+    total: { label: APPLE_PAY_TOTAL_LABEL, amount: cents },
+    displayItems: [{ label: APPLE_PAY_ITEM_LABEL, amount: cents }],
+  };
+}
 
 // The card form's email, remembered on this browser only as a convenience. Apple Pay hands
 // over the payer's email itself.
@@ -203,7 +213,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
     const pr = stripe.paymentRequest({
       country: 'US',
       currency: 'usd',
-      total: { label: APPLE_PAY_LABEL, amount: STAKE_OPTIONS[1].cents },
+      ...applePayAmounts(STAKE_OPTIONS[1].cents),
       // Where the stake's notices go (hold placed, goal missed, charged).
       requestPayerEmail: true,
     });
@@ -236,7 +246,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
   // Keeps the Apple Pay sheet's total in step with the picked stake without recreating the
   // PaymentRequest.
   useEffect(() => {
-    paymentRequest?.update({ total: { label: APPLE_PAY_LABEL, amount: stakeOption.cents || STAKE_OPTIONS[1].cents } });
+    paymentRequest?.update(applePayAmounts(stakeOption.cents || STAKE_OPTIONS[1].cents));
   }, [paymentRequest, stakeOption.cents]);
 
   /// Unstaked goals are a straight CloudKit write. Staked ones go to Apple Pay's sheet if the
