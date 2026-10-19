@@ -48,7 +48,7 @@ function content(goal: Goal, tab: GoalStatus): { text: string; tint: keyof typeo
     case 'held':
       // No time: the server's charge time depends on the card hold's expiry too, and the
       // cron runs every few minutes, so any time shown here could be off.
-      return { text: `${amount} to be charged`, tint: 'orange' };
+      return { text: `${amount} will be charged`, tint: 'orange' };
     default:
       return null;
   }

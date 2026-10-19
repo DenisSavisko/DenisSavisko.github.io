@@ -14,11 +14,13 @@ export function FailedTab({
   state,
   goals,
   onDelete,
+  onRelease,
   pendingDeletions,
 }: {
   state: GoalsState;
   goals: Goal[];
   onDelete: (goal: Goal) => void;
+  onRelease: (goal: Goal) => void;
   pendingDeletions: PendingAction;
 }) {
   return (
@@ -40,22 +42,39 @@ export function FailedTab({
             onUndo={() => pendingDeletions.cancel(goal.id)}
           />
         ) : (
-          <FailedRow key={goal.id} goal={goal} onDelete={onDelete} />
+          <FailedRow key={goal.id} goal={goal} onDelete={onDelete} onRelease={onRelease} />
         )
       }
     />
   );
 }
 
-/// Mirrors FailedTaskRow. A missed goal's hold can only be released by support, on request.
-function FailedRow({ goal, onDelete }: { goal: Goal; onDelete: (goal: Goal) => void }) {
+/// Mirrors FailedTaskRow, plus a Release button while a missed goal's hold is still held. It
+/// opens ReleaseSheet: a hold can only be released by support, on request.
+function FailedRow({
+  goal,
+  onDelete,
+  onRelease,
+}: {
+  goal: Goal;
+  onDelete: (goal: Goal) => void;
+  onRelease: (goal: Goal) => void;
+}) {
+  const canRelease = goal.stakeStatus === 'held' && Boolean(goal.stripePaymentIntentId);
   return (
     <ListItem
       title={goal.title}
       subtitle={`Due ${formatDeadline(goal.deadline)}`}
       after={
         <div className="flex items-center gap-2">
-          <StakeBadge goal={goal} tab="failed" />
+          <div className="flex flex-col items-end gap-1">
+            <StakeBadge goal={goal} tab="failed" />
+            {canRelease && (
+              <button onClick={() => onRelease(goal)} className="text-sm font-medium text-primary">
+                Release
+              </button>
+            )}
+          </div>
           <button aria-label="Delete goal" onClick={() => onDelete(goal)} className="text-ios-secondary dark:text-ios-secondary-dark">
             <TrashIcon className="h-5 w-5" />
           </button>

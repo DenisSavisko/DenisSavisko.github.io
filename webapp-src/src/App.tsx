@@ -13,6 +13,7 @@ import { VerifyModal } from './VerifyModal';
 import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
 import { SettingsTab } from './SettingsTab';
+import { ReleaseSheet } from './ReleaseSheet';
 import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVerificationSheet';
 import { usePendingAction } from './usePendingAction';
 import { useBackgroundSync } from './useBackgroundSync';
@@ -39,6 +40,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('active');
   const [token, setToken] = useState<string | null>(() => parseToken());
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
+  const [releaseGoal, setReleaseGoal] = useState<Goal | null>(null);
   const [shareTarget, setShareTarget] = useState<(ShareVerificationTarget & { headline: string; message: string }) | null>(
     null
   );
@@ -199,6 +201,7 @@ export default function App() {
                   state={goalsState}
                   goals={failed}
                   onDelete={handleDelete}
+                  onRelease={setReleaseGoal}
                   pendingDeletions={pendingDeletions}
                 />
               </div>
@@ -260,6 +263,8 @@ export default function App() {
         authStatus={authState.status}
         onClose={closeVerifyModal}
       />
+
+      <ReleaseSheet goal={releaseGoal} onClose={() => setReleaseGoal(null)} />
 
       <AddGoalSheet
         opened={isAddSheetOpen}
