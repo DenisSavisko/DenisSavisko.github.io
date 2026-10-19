@@ -453,7 +453,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
         <BlockTitle>Deadline</BlockTitle>
         <Block>
-          <Segmented strong>
+          <Segmented strong rounded>
             {DEADLINE_OPTIONS.map((option) => (
               <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
                 {option.label}
@@ -469,14 +469,13 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         <BlockTitle>Verification</BlockTitle>
         <List strongIos insetIos>
           <ListItem
-            title="Require confirmation from someone else"
+            title="Require a friend's confirmation"
             after={<Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />}
           />
         </List>
         {requiresVerification && (
           <BlockFooter>
-            Anyone with the link can see this goal's title{isStaked ? ' and stake' : ''}, and can confirm it for you. Only share
-            it with someone you trust.
+            Anyone with the link can see and confirm this goal. Share it only with someone you trust.
           </BlockFooter>
         )}
 
