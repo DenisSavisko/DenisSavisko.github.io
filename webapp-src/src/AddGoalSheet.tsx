@@ -80,6 +80,9 @@ type AddGoalSheetProps = {
 
 // Padding shared by every step's content, below its top bar.
 const STEP_BODY = 'pb-10';
+// The page's grouped-gray background, not Sheet's default white (the same white as an inset
+// List), so the sections stand out as cards, like iOS's Form in a sheet.
+const SHEET_COLORS = { bgIos: 'bg-ios-light-surface dark:bg-ios-dark-surface' };
 
 /// Each staked goal places its own hold with a card approved just for it: Apple Pay's sheet
 /// where the browser supports it, otherwise a card form step. Nothing is saved.
@@ -338,7 +341,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
   if (step === 'card') {
     return (
-      <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
+      <Sheet opened={opened} onBackdropClick={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
         <Navbar
           title="Card Details"
           left={<NavLink onClick={() => setStep('confirm')} disabled={isSaving}>Back</NavLink>}
@@ -374,7 +377,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
   if (step === 'confirm') {
     return (
-      <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
+      <Sheet opened={opened} onBackdropClick={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
         <Navbar title="Confirm Stake" left={<NavLink onClick={() => setStep('form')} disabled={isSaving}>Back</NavLink>} />
         <div className={STEP_BODY}>
           {/* Exactly this text, checkbox included, is sent with the hold as the consent
@@ -401,7 +404,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
   }
 
   return (
-    <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
+    <Sheet opened={opened} onBackdropClick={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
       {/* Mirrors AddTaskSheet's toolbar exactly: Cancel top-left (.cancellationAction), "New
           Goal" centered title, Add top-right (.confirmationAction) swapped for a spinner
           while busy — not stacked full-width buttons at the bottom. */}
@@ -438,7 +441,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
         <BlockTitle>Stake</BlockTitle>
         <Block>
-          <Segmented strong>
+          <Segmented strong rounded>
             {STAKE_OPTIONS.map((option) => (
               <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
                 {option.label}
@@ -450,7 +453,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
         <BlockTitle>Deadline</BlockTitle>
         <Block>
-          <Segmented strong>
+          <Segmented strong rounded>
             {DEADLINE_OPTIONS.map((option) => (
               <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
                 {option.label}
