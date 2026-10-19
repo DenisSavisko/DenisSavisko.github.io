@@ -8,7 +8,7 @@ import { ensureSignedIn } from './supabase';
 import { createHold, releaseHold, StakingError } from './staking';
 import { createStakedGoal } from './stakedGoal';
 import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
-import { STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
+import { PRIVACY_URL, STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
 
 const APPLE_PAY_LABEL = 'Goal Stake (charged if missed)';
 
@@ -402,6 +402,10 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
                 I'm 18 or older and agree to the{' '}
                 <a href={TERMS_URL} target="_blank" rel="noopener" className="text-primary underline">
                   Stake Terms
+                </a>{' '}
+                and{' '}
+                <a href={PRIVACY_URL} target="_blank" rel="noopener" className="text-primary underline">
+                  Privacy Policy
                 </a>
                 .
               </span>

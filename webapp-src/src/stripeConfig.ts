@@ -25,6 +25,7 @@ export type StakeOptionId = (typeof STAKE_OPTIONS)[number]['id'];
 // refuses a hold agreed to under any other version. Bump both when the Terms change.
 export const TERMS_VERSION = '2026-10-18';
 export const TERMS_URL = '/webapp/terms/';
+export const PRIVACY_URL = '/web-privacy-policy.html';
 
 // Mirrors CAPTURE_DELAY_MS in the mymaingoals-backend repo's supabase/functions/_shared/stakeRules.ts: a missed goal's hold
 // is charged this long after its deadline. Only used to show when.
