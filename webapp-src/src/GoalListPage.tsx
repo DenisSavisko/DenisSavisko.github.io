@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
-import { Block, List, ListItem, Preloader } from 'konsta/react';
+import { Block, BlockTitle, List, Preloader } from 'konsta/react';
 import type { Goal } from './useGoals';
 import { groupByMonth } from './useGoals';
 
@@ -65,21 +65,25 @@ export function GoalListPage({
 
   if (!groupDateOf) {
     return (
-      <List strongIos outlineIos insetIos>
+      <List strongIos insetIos>
         {goals.map((goal) => renderRow(goal))}
       </List>
     );
   }
 
+  // One inset card per month, its title above it: iOS's Section(title) in an inset-grouped
+  // List, with no outline (iOS draws none).
   const sections = groupByMonth(goals, groupDateOf);
   return (
-    <List strongIos outlineIos insetIos>
+    <>
       {sections.map((section) => (
         <Fragment key={section.title}>
-          <ListItem groupTitle title={section.title} />
-          {section.goals.map((goal) => renderRow(goal))}
+          <BlockTitle>{section.title}</BlockTitle>
+          <List strongIos insetIos>
+            {section.goals.map((goal) => renderRow(goal))}
+          </List>
         </Fragment>
       ))}
-    </List>
+    </>
   );
 }

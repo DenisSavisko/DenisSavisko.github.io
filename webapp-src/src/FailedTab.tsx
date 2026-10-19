@@ -66,7 +66,7 @@ function FailedRow({
     <SwipeToDelete onDelete={() => onDelete(goal)}>
       <ListItem
         component="div"
-        title={goal.title}
+        title={<span className="[overflow-wrap:anywhere]">{goal.title}</span>}
         subtitle={`Due ${formatDeadline(goal.deadline)}`}
         after={
           <div className="flex flex-col items-end gap-1">

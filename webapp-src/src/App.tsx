@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { App as KonstaApp, Block, Fab, Navbar, Page } from 'konsta/react';
+import { App as KonstaApp, Block, Fab, Icon as KonstaIcon, Navbar, Page, Tabbar, TabbarLink, ToolbarPane } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
 import { useSystemDarkMode } from './useSystemDarkMode';
 import { useGoals, sortedByTab, mapRecord, type Goal } from './useGoals';
@@ -17,11 +17,17 @@ import { ReleaseSheet } from './ReleaseSheet';
 import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVerificationSheet';
 import { usePendingAction } from './usePendingAction';
 import { useBackgroundSync } from './useBackgroundSync';
-import { GlassTabbar } from './GlassTabbar';
 import { TabDoneIcon, TabFailedIcon, TabGoalsIcon, TabSettingsIcon } from './tabIcons';
 import { PlusIcon } from './icons';
 
 type Tab = 'active' | 'done' | 'failed' | 'settings';
+
+const TABS = [
+  { id: 'active', label: 'Goals', Icon: TabGoalsIcon },
+  { id: 'done', label: 'Done', Icon: TabDoneIcon },
+  { id: 'failed', label: 'Failed', Icon: TabFailedIcon },
+  { id: 'settings', label: 'Settings', Icon: TabSettingsIcon },
+] as const;
 
 const TAB_TITLES: Record<Tab, string> = {
   active: 'My Main Goals',
@@ -214,8 +220,7 @@ export default function App() {
                 div, not a className override on Fab itself — it ships its own "relative"
                 positioning internally, and fighting that with a conflicting position utility
                 on the same element is what was making the old edge-to-edge Tabbar not render
-                like Konsta's real native-style chrome (see GlassTabbar.tsx for why that's
-                gone now too). */}
+                like Konsta's real native-style chrome. */}
             {tab === 'settings' && <SettingsTab />}
 
             {/* Not on Settings: adding a goal has nothing to do with it, and it would sit over
@@ -236,21 +241,27 @@ export default function App() {
             </div>
             )}
 
-            <GlassTabbar
-              items={[
-                { id: 'active', label: 'Goals', active: tab === 'active', icon: <TabGoalsIcon className="h-6 w-6" />, onClick: () => setTab('active') },
-                { id: 'done', label: 'Done', active: tab === 'done', icon: <TabDoneIcon className="h-6 w-6" />, onClick: () => setTab('done') },
-                {
-                  id: 'failed',
-                  label: 'Failed',
-                  active: tab === 'failed',
-                  icon: <TabFailedIcon className="h-6 w-6" />,
-                  badge: failedBadgeCount,
-                  onClick: () => setTab('failed'),
-                },
-                { id: 'settings', label: 'Settings', active: tab === 'settings', icon: <TabSettingsIcon className="h-6 w-6" />, onClick: () => setTab('settings') },
-              ]}
-            />
+            {/* Konsta's own iOS 26 tab bar: a floating Liquid Glass pane (ToolbarPane) inside
+                a Tabbar. Fixed and capped to the app's width, like the Fab above. */}
+            <Tabbar labels icons className="fixed inset-x-0 bottom-0 mx-auto max-w-(--k-app-max-w)">
+              <ToolbarPane>
+                {TABS.map(({ id, label, Icon }) => (
+                  <TabbarLink
+                    key={id}
+                    active={tab === id}
+                    onClick={() => setTab(id)}
+                    label={label}
+                    icon={
+                      <KonstaIcon
+                        ios={<Icon className="h-7 w-7" />}
+                        badge={id === 'failed' && failedBadgeCount > 0 ? failedBadgeCount : undefined}
+                        badgeColors={{ bg: 'bg-red-500' }}
+                      />
+                    }
+                  />
+                ))}
+              </ToolbarPane>
+            </Tabbar>
           </>
         )}
       </Page>

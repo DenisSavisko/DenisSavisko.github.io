@@ -374,7 +374,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         <div className={STEP_BODY}>
           {/* Exactly this text, checkbox included, is sent with the hold as the consent
               record (stakeConsent.ts). Full-size text, as the legal review asked. */}
-          <p className="text-center text-lg font-semibold text-black dark:text-white">"{title.trim()}"</p>
+          <p className="text-center text-lg font-semibold text-black [overflow-wrap:anywhere] dark:text-white">"{title.trim()}"</p>
           <StakeConsent summary={summary} agreed={agreedToTerms} onChange={setAgreedToTerms} />
           {isSaving ? (
             <div className="mt-6 flex justify-center">
@@ -424,6 +424,8 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         <input
           type="text"
           placeholder="What do you want to do?"
+          // Same cap as the iPhone app and the backend (friend links reject longer).
+          maxLength={200}
           value={title}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
           className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-base text-black outline-none dark:border-white/15 dark:text-white"

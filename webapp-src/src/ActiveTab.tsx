@@ -82,7 +82,7 @@ function ActiveRow({
             {isPending ? <CheckCircleIcon className="h-6 w-6" /> : <CircleIcon className="h-6 w-6" />}
           </button>
         }
-        title={<span className={isPending ? 'line-through text-ios-secondary dark:text-ios-secondary-dark' : undefined}>{goal.title}</span>}
+        title={<span className={`[overflow-wrap:anywhere] ${isPending ? 'line-through text-ios-secondary dark:text-ios-secondary-dark' : ''}`}>{goal.title}</span>}
         subtitle={`Due ${formatDeadline(goal.deadline)}`}
         footer={
           isPending ? (

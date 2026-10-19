@@ -53,7 +53,7 @@ function DoneRow({ goal, onDelete }: { goal: Goal; onDelete: (goal: Goal) => voi
     <SwipeToDelete onDelete={() => onDelete(goal)}>
       <ListItem
         component="div"
-        title={goal.title}
+        title={<span className="[overflow-wrap:anywhere]">{goal.title}</span>}
         subtitle={goal.completedDate ? `Completed ${formatDeadline(goal.completedDate)}` : undefined}
         after={<StakeBadge goal={goal} tab="done" />}
       />
