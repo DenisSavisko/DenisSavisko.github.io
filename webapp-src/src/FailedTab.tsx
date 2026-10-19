@@ -1,4 +1,4 @@
-import { ListItem } from 'konsta/react';
+import { Link, ListItem } from 'konsta/react';
 import { GoalListPage } from './GoalListPage';
 import { PendingDeleteRow } from './PendingDeleteRow';
 import { XCircleIcon } from './icons';
@@ -72,9 +72,9 @@ function FailedRow({
           <div className="flex flex-col items-end gap-1">
             <StakeBadge goal={goal} tab="failed" />
             {canRelease && (
-              <button onClick={() => onRelease(goal)} className="text-sm font-medium text-primary">
+              <Link onClick={() => onRelease(goal)} className="text-sm font-medium">
                 Release
-              </button>
+              </Link>
             )}
           </div>
         }

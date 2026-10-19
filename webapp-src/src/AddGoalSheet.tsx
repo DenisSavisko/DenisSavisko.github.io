@@ -1,7 +1,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
-import { Button, Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
+import {
+  Block,
+  BlockFooter,
+  BlockTitle,
+  Button,
+  Checkbox,
+  Link,
+  List,
+  ListInput,
+  ListItem,
+  Navbar,
+  Preloader,
+  Segmented,
+  SegmentedButton,
+  Sheet,
+  Toggle,
+} from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
 import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
@@ -63,7 +79,7 @@ type AddGoalSheetProps = {
 };
 
 // Padding shared by every step's content, below its top bar.
-const STEP_BODY = 'px-4 pb-10 pt-4';
+const STEP_BODY = 'pb-10';
 
 /// Each staked goal places its own hold with a card approved just for it: Apple Pay's sheet
 /// where the browser supports it, otherwise a card form step. Nothing is saved.
@@ -325,36 +341,32 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
       <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
         <Navbar
           title="Card Details"
-          left={
-            <button onClick={() => setStep('confirm')} disabled={isSaving} className="px-2 text-primary">
-              Back
-            </button>
-          }
+          left={<NavLink onClick={() => setStep('confirm')} disabled={isSaving}>Back</NavLink>}
           right={
             isSaving ? (
-              <div className="flex items-center justify-center px-2">
-                <Preloader />
-              </div>
+              <Preloader />
             ) : (
-              <button onClick={handlePayWithCard} className="px-2 font-semibold text-primary">
+              <NavLink onClick={handlePayWithCard} bold>
                 Hold {formatStakeCents(stakeOption.cents)}
-              </button>
+              </NavLink>
             )
           }
         />
         <div className={STEP_BODY}>
-          <input
-            type="email"
-            autoComplete="email"
-            placeholder="Email for stake notices"
-            value={email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
-            className="mb-3 w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-base text-black outline-none dark:border-white/15 dark:text-white"
-          />
-          <div className="rounded-2xl border border-black/10 px-3 py-3 dark:border-white/15">
-            <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
-          </div>
-          {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
+          <List strongIos insetIos>
+            <ListInput
+              type="email"
+              autoComplete="email"
+              placeholder="Email for stake notices"
+              value={email}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
+            />
+            {/* Stripe's own card field, in a row of the same list. */}
+            <li className="px-4 py-3">
+              <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
+            </li>
+          </List>
+          <ErrorMessage message={errorMessage} />
         </div>
       </Sheet>
     );
@@ -363,29 +375,26 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
   if (step === 'confirm') {
     return (
       <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
-        <Navbar
-          title="Confirm Stake"
-          left={
-            <button onClick={() => setStep('form')} disabled={isSaving} className="px-2 text-primary">
-              Back
-            </button>
-          }
-        />
+        <Navbar title="Confirm Stake" left={<NavLink onClick={() => setStep('form')} disabled={isSaving}>Back</NavLink>} />
         <div className={STEP_BODY}>
           {/* Exactly this text, checkbox included, is sent with the hold as the consent
               record (stakeConsent.ts). Full-size text, as the legal review asked. */}
-          <p className="text-center text-lg font-semibold text-black [overflow-wrap:anywhere] dark:text-white">"{title.trim()}"</p>
+          <Block className="text-center text-lg font-semibold text-black [overflow-wrap:anywhere] dark:text-white">
+            "{title.trim()}"
+          </Block>
           <StakeConsent summary={summary} agreed={agreedToTerms} onChange={setAgreedToTerms} />
-          {isSaving ? (
-            <div className="mt-6 flex justify-center">
-              <Preloader />
-            </div>
-          ) : (
-            <Button large rounded className="mt-6" disabled={!agreedToTerms} onClick={handleConfirmTapped}>
-              {canUseApplePay ? `Hold ${summary.amount}` : 'Continue'}
-            </Button>
-          )}
-          {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
+          <Block>
+            {isSaving ? (
+              <div className="flex justify-center">
+                <Preloader />
+              </div>
+            ) : (
+              <Button large rounded disabled={!agreedToTerms} onClick={handleConfirmTapped}>
+                {canUseApplePay ? `Hold ${summary.amount}` : 'Continue'}
+              </Button>
+            )}
+          </Block>
+          <ErrorMessage message={errorMessage} />
         </div>
       </Sheet>
     );
@@ -398,85 +407,108 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           while busy — not stacked full-width buttons at the bottom. */}
       <Navbar
         title="New Goal"
-        left={
-          <button onClick={close} className="px-2 text-primary">
-            Cancel
-          </button>
-        }
+        left={<NavLink onClick={close}>Cancel</NavLink>}
         right={
           isSaving ? (
-            <div className="flex items-center justify-center px-2">
-              <Preloader />
-            </div>
+            <Preloader />
           ) : (
-            <button onClick={handleAddTapped} disabled={!isValid} className={`px-2 font-semibold ${isValid ? 'text-primary' : 'text-black/30 dark:text-white/30'}`}>
+            <NavLink onClick={handleAddTapped} disabled={!isValid} bold>
               {isStaked ? 'Next' : 'Add'}
-            </button>
+            </NavLink>
           )
         }
       />
 
+      {/* Mirrors AddTaskSheet's Form: one titled section per field, in Konsta's inset-grouped
+          List/Block, the same way iOS's Form lays out Sections. */}
       <div className={STEP_BODY}>
-        {/* Plain input styled to match Stake/Deadline's label+control pattern below, rather
-            than Konsta's ListInput/List card styling (its own label position/inset margin
-            didn't line up with everything else on this sheet). */}
-        <p className="mb-2 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Title</p>
-        <input
-          type="text"
-          placeholder="What do you want to do?"
-          // Same cap as the iPhone app and the backend (friend links reject longer).
-          maxLength={200}
-          value={title}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-          className="w-full rounded-2xl border border-black/10 bg-transparent px-4 py-3 text-base text-black outline-none dark:border-white/15 dark:text-white"
-        />
+        <BlockTitle>Goal</BlockTitle>
+        <List strongIos insetIos>
+          <ListInput
+            type="text"
+            placeholder="What do you want to do?"
+            // Same cap as the iPhone app and the backend (friend links reject longer).
+            maxLength={200}
+            value={title}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
+            clearButton={title !== ''}
+            onClear={() => setTitle('')}
+          />
+        </List>
 
-        {/* Mirrors AddTaskSheet's Section("Stake"). */}
-        <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Stake</p>
-        <Segmented strong>
-          {STAKE_OPTIONS.map((option) => (
-            <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
-              {option.label}
-            </SegmentedButton>
-          ))}
-        </Segmented>
+        <BlockTitle>Stake</BlockTitle>
+        <Block>
+          <Segmented strong>
+            {STAKE_OPTIONS.map((option) => (
+              <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
+                {option.label}
+              </SegmentedButton>
+            ))}
+          </Segmented>
+        </Block>
 
-        {/* Mirrors AddTaskSheet's Section("Deadline") — a segmented control of relative
-            offsets, not a date/time picker. */}
-        <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Deadline</p>
-        <Segmented strong>
-          {DEADLINE_OPTIONS.map((option) => (
-            <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
-              {option.label}
-            </SegmentedButton>
-          ))}
-        </Segmented>
-        <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">Due around {formatDeadline(deadline)}</p>
+        {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
+        <BlockTitle>Deadline</BlockTitle>
+        <Block>
+          <Segmented strong>
+            {DEADLINE_OPTIONS.map((option) => (
+              <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
+                {option.label}
+              </SegmentedButton>
+            ))}
+          </Segmented>
+        </Block>
+        <BlockFooter>Due around {formatDeadline(deadline)}</BlockFooter>
 
-        {/* Mirrors AddTaskSheet's Section("Verification") — only ever shown once staked,
-            same as iOS's `if isStaked { Toggle(...) }`. Plain row, not Konsta's List/ListItem
-            — same reasoning as Title above: List's own insetIos margin plus ListItem's own
-            internal padding double up to a ~32px left inset, out of step with every other
-            field's flat px-4. */}
         {/* Not gated on staking, mirroring AddTaskSheet: a friend confirming you did the
             thing stands on its own, and createVerification's stake argument is already
             nullable. */}
-        <p className="mb-2 mt-6 px-4 text-xs font-medium uppercase text-ios-secondary dark:text-ios-secondary-dark">Verification</p>
-        <div className="flex items-center justify-between rounded-2xl border border-black/10 px-4 py-3 dark:border-white/15">
-          <span className="text-base text-black dark:text-white">Require confirmation from someone else</span>
-          <Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />
-        </div>
+        <BlockTitle>Verification</BlockTitle>
+        <List strongIos insetIos>
+          <ListItem
+            title="Require confirmation from someone else"
+            after={<Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />}
+          />
+        </List>
         {requiresVerification && (
-          <p className="mt-2 px-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
+          <BlockFooter>
             Anyone with the link can see this goal's title{isStaked ? ' and stake' : ''}, and can confirm it for you. Only share
             it with someone you trust.
-          </p>
+          </BlockFooter>
         )}
 
-        {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
+        <ErrorMessage message={errorMessage} />
       </div>
     </Sheet>
   );
+}
+
+/// A Navbar text button (Konsta's Link), dimmed and inert while disabled, which Link itself
+/// has no prop for.
+function NavLink({
+  onClick,
+  disabled = false,
+  bold = false,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  bold?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      onClick={disabled ? undefined : onClick}
+      className={`${bold ? 'font-semibold' : ''} ${disabled ? 'pointer-events-none opacity-30' : ''}`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function ErrorMessage({ message }: { message: string | null }) {
+  if (!message) return null;
+  return <Block className="text-center text-red-500">{message}</Block>;
 }
 
 function StakeConsent({
@@ -490,30 +522,32 @@ function StakeConsent({
 }) {
   const link = 'text-primary underline';
   return (
-    <div className="mt-4 rounded-2xl border border-black/10 px-4 py-4 text-base text-black dark:border-white/15 dark:text-white">
-      <p>
-        <strong>{summary.amount} hold on your card now.</strong> {summary.terms} {summary.refunds}
-      </p>
-      {summary.debitNote && <p className="mt-2">{summary.debitNote}</p>}
-      <label className="mt-4 flex items-start gap-3">
-        <input
-          type="checkbox"
-          checked={agreed}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)}
-          className="mt-1 h-5 w-5 shrink-0 accent-primary"
+    <>
+      <Block strong inset className="!text-base text-black dark:text-white">
+        <p>
+          <strong>{summary.amount} hold on your card now.</strong> {summary.terms} {summary.refunds}
+        </p>
+        {summary.debitNote && <p className="mt-2">{summary.debitNote}</p>}
+      </Block>
+      <List strongIos insetIos>
+        <ListItem
+          label
+          media={<Checkbox component="div" checked={agreed} onChange={(e: React.ChangeEvent<HTMLInputElement>) => onChange(e.target.checked)} />}
+          title={
+            <span className="whitespace-normal">
+              I'm 18+, in the US, and agree to the{' '}
+              <a href={TERMS_URL} target="_blank" rel="noopener" className={link}>
+                Stake Terms
+              </a>{' '}
+              (including this charge). I've read the{' '}
+              <a href={PRIVACY_URL} target="_blank" rel="noopener" className={link}>
+                Privacy Policy
+              </a>
+              .
+            </span>
+          }
         />
-        <span>
-          I'm 18+, in the US, and agree to the{' '}
-          <a href={TERMS_URL} target="_blank" rel="noopener" className={link}>
-            Stake Terms
-          </a>{' '}
-          (including this charge). I've read the{' '}
-          <a href={PRIVACY_URL} target="_blank" rel="noopener" className={link}>
-            Privacy Policy
-          </a>
-          .
-        </span>
-      </label>
-    </div>
+      </List>
+    </>
   );
 }

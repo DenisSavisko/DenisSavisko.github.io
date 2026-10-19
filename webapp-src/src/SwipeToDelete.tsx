@@ -45,7 +45,10 @@ export function SwipeToDelete({ onDelete, children }: { onDelete: () => void; ch
         }
         if (d.horizontal) setOffset(Math.min(0, d.from + dx));
       }}
-      onPointerUp={() => {
+      onPointerUp={(e) => {
+        // A tap on Delete: leave the row open, or closing it would remove the button before
+        // its click arrives.
+        if (buttonRef.current?.contains(e.target as Node)) return;
         const d = drag.current;
         drag.current = null;
         if (!d?.horizontal) {
