@@ -1,7 +1,6 @@
 import { Badge } from 'konsta/react';
 import type { Goal, GoalStatus } from './useGoals';
 import { formatStakeCents } from './useGoals';
-import { CHARGE_DELAY_MS } from './stripeConfig';
 
 const TINTS = {
   yellow: { bg: 'bg-yellow-100 dark:bg-yellow-900', text: 'text-yellow-800 dark:text-yellow-200' },
@@ -46,11 +45,10 @@ function content(goal: Goal, tab: GoalStatus): { text: string; tint: keyof typeo
       return { text: `${amount} hold expired (not charged)`, tint: 'gray' };
     case 'released':
       return { text: `${amount} saved`, tint: 'mint' };
-    case 'held': {
-      const chargeAt = new Date(goal.deadline.getTime() + CHARGE_DELAY_MS);
-      const when = chargeAt.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
-      return { text: `${amount} charges ${when}`, tint: 'orange' };
-    }
+    case 'held':
+      // No time: the server's charge time depends on the card hold's expiry too, and the
+      // cron runs every few minutes, so any time shown here could be off.
+      return { text: `${amount} to be charged`, tint: 'orange' };
     default:
       return null;
   }

@@ -13,7 +13,6 @@ import { VerifyModal } from './VerifyModal';
 import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
 import { SettingsTab } from './SettingsTab';
-import { ReleaseSheet } from './ReleaseSheet';
 import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVerificationSheet';
 import { usePendingAction } from './usePendingAction';
 import { useBackgroundSync } from './useBackgroundSync';
@@ -29,12 +28,6 @@ const TAB_TITLES: Record<Tab, string> = {
   settings: 'Settings',
 };
 
-/// #release/<paymentIntentId>, the "goal missed" email's link to the free release.
-function parseReleaseId(): string | null {
-  const match = /^#release\/(.+)$/.exec(window.location.hash);
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 function parseToken(): string | null {
   // Matches #verify/<token> — a hash fragment never reaches the server, so this page can
   // live at a fixed, static path (/webapp/) with no server-side routing at all.
@@ -45,7 +38,6 @@ function parseToken(): string | null {
 export default function App() {
   const [tab, setTab] = useState<Tab>('active');
   const [token, setToken] = useState<string | null>(() => parseToken());
-  const [releaseId, setReleaseId] = useState<string | null>(() => parseReleaseId());
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
   const [shareTarget, setShareTarget] = useState<(ShareVerificationTarget & { headline: string; message: string }) | null>(
     null
@@ -54,10 +46,7 @@ export default function App() {
   const isDark = useSystemDarkMode();
 
   useEffect(() => {
-    const onHashChange = () => {
-      setToken(parseToken());
-      setReleaseId(parseReleaseId());
-    };
+    const onHashChange = () => setToken(parseToken());
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
@@ -72,13 +61,6 @@ export default function App() {
   function closeVerifyModal() {
     setToken(null);
     if (window.location.hash.startsWith('#verify/')) {
-      history.replaceState(null, '', window.location.pathname + window.location.search);
-    }
-  }
-
-  function closeReleaseSheet() {
-    setReleaseId(null);
-    if (window.location.hash.startsWith('#release/')) {
       history.replaceState(null, '', window.location.pathname + window.location.search);
     }
   }
@@ -217,7 +199,6 @@ export default function App() {
                   state={goalsState}
                   goals={failed}
                   onDelete={handleDelete}
-                  onRelease={(goal) => setReleaseId(goal.stripePaymentIntentId)}
                   pendingDeletions={pendingDeletions}
                 />
               </div>
@@ -278,16 +259,6 @@ export default function App() {
         token={isSignedIn ? token : null}
         authStatus={authState.status}
         onClose={closeVerifyModal}
-      />
-
-      {/* Unlike VerifyModal, open even while signed out: the email's link is the payer's own,
-          and the stake's iCloud goal isn't needed to release it. */}
-      <ReleaseSheet
-        paymentIntentId={releaseId}
-        onClose={closeReleaseSheet}
-        onReleased={() => {
-          if (isSignedIn) reloadGoals();
-        }}
       />
 
       <AddGoalSheet

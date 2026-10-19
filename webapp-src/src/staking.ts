@@ -109,31 +109,3 @@ export async function getStakeStatuses(paymentIntentIds: string[]): Promise<Map<
   const rows = data as StakedGoalStatusRow[];
   return new Map(rows.map((row) => [row.stripe_payment_intent_id, row.status]));
 }
-
-export interface FreeReleaseInfo {
-  status: string;
-  amountCents: number;
-  goalTitle: string | null;
-  deadline: string;
-  chargeAt: string;
-  freeReleaseAvailable: boolean;
-  nextFreeReleaseAt: string | null;
-}
-
-/// What a free release would do for this stake, without doing it.
-export async function getFreeReleaseInfo(paymentIntentId: string): Promise<FreeReleaseInfo> {
-  const { data, error } = await supabase.functions.invoke('free-release', {
-    body: { paymentIntentId, check: true },
-  });
-  if (error) throw error;
-  return data as FreeReleaseInfo;
-}
-
-/// Lets go of a missed goal's hold, using up the free release (one every 30 days).
-export async function freeRelease(paymentIntentId: string): Promise<ReleaseHoldResponse> {
-  const { data, error } = await supabase.functions.invoke('free-release', {
-    body: { paymentIntentId },
-  });
-  if (error) throw error;
-  return data as ReleaseHoldResponse;
-}
