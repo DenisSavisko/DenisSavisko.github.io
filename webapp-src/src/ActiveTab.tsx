@@ -1,7 +1,8 @@
 import { ListItem } from 'konsta/react';
 import { GoalListPage } from './GoalListPage';
 import { PendingDeleteRow } from './PendingDeleteRow';
-import { ChecklistIcon, CheckCircleIcon, CircleIcon, TrashIcon } from './icons';
+import { ChecklistIcon, CheckCircleIcon, CircleIcon } from './icons';
+import { SwipeToDelete } from './SwipeToDelete';
 import { formatDeadline } from './useGoals';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
@@ -66,40 +67,40 @@ function ActiveRow({
   const isPending = pendingCompletions.isPending(goal.id);
 
   return (
-    <ListItem
-      media={
-        <button
-          aria-label="Mark done"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleDone(goal);
-          }}
-          className={isPending ? 'text-green-500' : 'text-ios-secondary dark:text-ios-secondary-dark'}
-        >
-          {isPending ? <CheckCircleIcon className="h-6 w-6" /> : <CircleIcon className="h-6 w-6" />}
-        </button>
-      }
-      title={<span className={isPending ? 'line-through text-ios-secondary dark:text-ios-secondary-dark' : undefined}>{goal.title}</span>}
-      subtitle={`Due ${formatDeadline(goal.deadline)}`}
-      footer={
-        isPending ? (
-          <div
-            key={pendingCompletions.startedAt(goal.id)}
-            className="pending-countdown-bar mt-1 h-1 w-full rounded-full bg-green-500/60"
-            style={{ '--pending-delay': `${pendingCompletions.delayMs}ms` } as React.CSSProperties}
-          />
-        ) : goal.requiresVerification && !goal.isVerified ? (
-          <span className="text-blue-500 dark:text-blue-400">Awaiting a friend's confirmation</span>
-        ) : undefined
-      }
-      after={
-        <div className="flex items-center gap-2 opacity-100" style={isPending ? { opacity: 0.5 } : undefined}>
-          <StakeBadge goal={goal} tab="active" />
-          <button aria-label="Delete goal" onClick={() => onDelete(goal)} className="text-ios-secondary dark:text-ios-secondary-dark">
-            <TrashIcon className="h-5 w-5" />
+    <SwipeToDelete onDelete={() => onDelete(goal)}>
+      <ListItem
+        component="div"
+        media={
+          <button
+            aria-label="Mark done"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleDone(goal);
+            }}
+            className={isPending ? 'text-green-500' : 'text-ios-secondary dark:text-ios-secondary-dark'}
+          >
+            {isPending ? <CheckCircleIcon className="h-6 w-6" /> : <CircleIcon className="h-6 w-6" />}
           </button>
-        </div>
-      }
-    />
+        }
+        title={<span className={isPending ? 'line-through text-ios-secondary dark:text-ios-secondary-dark' : undefined}>{goal.title}</span>}
+        subtitle={`Due ${formatDeadline(goal.deadline)}`}
+        footer={
+          isPending ? (
+            <div
+              key={pendingCompletions.startedAt(goal.id)}
+              className="pending-countdown-bar mt-1 h-1 w-full rounded-full bg-green-500/60"
+              style={{ '--pending-delay': `${pendingCompletions.delayMs}ms` } as React.CSSProperties}
+            />
+          ) : goal.requiresVerification && !goal.isVerified ? (
+            <span className="text-blue-500 dark:text-blue-400">Awaiting a friend's confirmation</span>
+          ) : undefined
+        }
+        after={
+          <div className="flex items-center gap-2 opacity-100" style={isPending ? { opacity: 0.5 } : undefined}>
+            <StakeBadge goal={goal} tab="active" />
+          </div>
+        }
+      />
+    </SwipeToDelete>
   );
 }

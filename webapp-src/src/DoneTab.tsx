@@ -1,7 +1,8 @@
 import { ListItem } from 'konsta/react';
 import { GoalListPage } from './GoalListPage';
 import { PendingDeleteRow } from './PendingDeleteRow';
-import { CheckCircleIcon, TrashIcon } from './icons';
+import { CheckCircleIcon } from './icons';
+import { SwipeToDelete } from './SwipeToDelete';
 import { formatDeadline } from './useGoals';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
@@ -49,17 +50,13 @@ export function DoneTab({
 
 function DoneRow({ goal, onDelete }: { goal: Goal; onDelete: (goal: Goal) => void }) {
   return (
-    <ListItem
-      title={goal.title}
-      subtitle={goal.completedDate ? `Completed ${formatDeadline(goal.completedDate)}` : undefined}
-      after={
-        <div className="flex items-center gap-2">
-          <StakeBadge goal={goal} tab="done" />
-          <button aria-label="Delete goal" onClick={() => onDelete(goal)} className="text-ios-secondary dark:text-ios-secondary-dark">
-            <TrashIcon className="h-5 w-5" />
-          </button>
-        </div>
-      }
-    />
+    <SwipeToDelete onDelete={() => onDelete(goal)}>
+      <ListItem
+        component="div"
+        title={goal.title}
+        subtitle={goal.completedDate ? `Completed ${formatDeadline(goal.completedDate)}` : undefined}
+        after={<StakeBadge goal={goal} tab="done" />}
+      />
+    </SwipeToDelete>
   );
 }

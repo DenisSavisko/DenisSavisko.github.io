@@ -18,7 +18,8 @@ import { ShareVerificationSheet, type ShareVerificationTarget } from './ShareVer
 import { usePendingAction } from './usePendingAction';
 import { useBackgroundSync } from './useBackgroundSync';
 import { GlassTabbar } from './GlassTabbar';
-import { ChecklistIcon, CheckCircleIcon, GearIcon, PlusIcon, XCircleIcon } from './icons';
+import { TabDoneIcon, TabFailedIcon, TabGoalsIcon, TabSettingsIcon } from './tabIcons';
+import { PlusIcon } from './icons';
 
 type Tab = 'active' | 'done' | 'failed' | 'settings';
 
@@ -237,17 +238,17 @@ export default function App() {
 
             <GlassTabbar
               items={[
-                { id: 'active', label: 'Goals', active: tab === 'active', icon: <ChecklistIcon className="h-4 w-4" />, onClick: () => setTab('active') },
-                { id: 'done', label: 'Done', active: tab === 'done', icon: <CheckCircleIcon className="h-4 w-4" />, onClick: () => setTab('done') },
+                { id: 'active', label: 'Goals', active: tab === 'active', icon: <TabGoalsIcon className="h-6 w-6" />, onClick: () => setTab('active') },
+                { id: 'done', label: 'Done', active: tab === 'done', icon: <TabDoneIcon className="h-6 w-6" />, onClick: () => setTab('done') },
                 {
                   id: 'failed',
                   label: 'Failed',
                   active: tab === 'failed',
-                  icon: <XCircleIcon className="h-4 w-4" />,
+                  icon: <TabFailedIcon className="h-6 w-6" />,
                   badge: failedBadgeCount,
                   onClick: () => setTab('failed'),
                 },
-                { id: 'settings', label: 'Settings', active: tab === 'settings', icon: <GearIcon className="h-4 w-4" />, onClick: () => setTab('settings') },
+                { id: 'settings', label: 'Settings', active: tab === 'settings', icon: <TabSettingsIcon className="h-6 w-6" />, onClick: () => setTab('settings') },
               ]}
             />
           </>

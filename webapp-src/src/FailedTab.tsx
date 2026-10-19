@@ -1,7 +1,8 @@
 import { ListItem } from 'konsta/react';
 import { GoalListPage } from './GoalListPage';
 import { PendingDeleteRow } from './PendingDeleteRow';
-import { XCircleIcon, TrashIcon } from './icons';
+import { XCircleIcon } from './icons';
+import { SwipeToDelete } from './SwipeToDelete';
 import { formatDeadline } from './useGoals';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
@@ -62,11 +63,12 @@ function FailedRow({
 }) {
   const canRelease = goal.stakeStatus === 'held' && Boolean(goal.stripePaymentIntentId);
   return (
-    <ListItem
-      title={goal.title}
-      subtitle={`Due ${formatDeadline(goal.deadline)}`}
-      after={
-        <div className="flex items-center gap-2">
+    <SwipeToDelete onDelete={() => onDelete(goal)}>
+      <ListItem
+        component="div"
+        title={goal.title}
+        subtitle={`Due ${formatDeadline(goal.deadline)}`}
+        after={
           <div className="flex flex-col items-end gap-1">
             <StakeBadge goal={goal} tab="failed" />
             {canRelease && (
@@ -75,12 +77,9 @@ function FailedRow({
               </button>
             )}
           </div>
-          <button aria-label="Delete goal" onClick={() => onDelete(goal)} className="text-ios-secondary dark:text-ios-secondary-dark">
-            <TrashIcon className="h-5 w-5" />
-          </button>
-        </div>
-      }
-    />
+        }
+      />
+    </SwipeToDelete>
   );
 }
 
