@@ -1,9 +1,9 @@
 import { loadStripe } from '@stripe/stripe-js';
 
-// Same publishable key as MyMainGoals/StripeConfig.swift — safe to embed client-side (that
-// file's own comment says the same). Currently a pk_test_ key, so this is test mode.
+// Live mode: real holds and charges. Publishable keys are meant to be public. The backend's
+// matching live restricted key lives only in Supabase's secrets.
 export const STRIPE_PUBLISHABLE_KEY =
-  'pk_test_51H03MfCDnmwAAukbyD28AYAEFsxWAXnx8np5Dc9Vn0ecrHIyzK14PPLqZPHv6Twf2BCuqpn3Tlied0xyTU7uH5pG00JAjc6mAc';
+  'pk_live_51H03MfCDnmwAAukbDHUXNZAruqbQNRPiXiF76WGgofcS6unHnJAGygfroYK1WSUbILff7yxeN8j9mGhF3D2ZwlfP00Tgi0HDNc';
 
 // loadStripe() should only be called once — this module-level singleton promise, shared by
 // every <Elements> provider, matches Stripe's own documented pattern.
