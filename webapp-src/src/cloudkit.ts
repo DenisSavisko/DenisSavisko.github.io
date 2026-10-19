@@ -163,9 +163,10 @@ export async function deleteGoal(container: CKContainer, recordName: string): Pr
 /// Mirrors TaskStore.addTask/addStakedTask (params.stake is only set from the latter's call
 /// site — see AddGoalSheet.tsx, which only reaches this with a stake after create-hold has
 /// already confirmed the PaymentIntent, same "never insert a staked goal locally on a hope
-/// the payment will go through" rule as addStakedTask's own comment). recordName is left for
-/// CloudKit to generate (confirmed: it's an internal identity, unrelated to CD_id — see
-/// cloudkitConfig.ts). CD_id is an ordinary data field the iOS app happens to always populate
+/// the payment will go through" rule as addStakedTask's own comment). recordName is chosen
+/// here rather than by CloudKit (it's an internal identity, unrelated to CD_id — see
+/// cloudkitConfig.ts), so a save whose reply got lost can still be checked: see
+/// saveNewRecordConfirmed. CD_id is an ordinary data field the iOS app happens to always populate
 /// with a fresh UUID at creation (GoalTask.init's default), so this does the same rather than
 /// leaving it unset.
 export async function createGoal(
@@ -203,12 +204,40 @@ export async function createGoal(
     fields[GOAL_FIELDS.stripePaymentIntentId] = { value: params.stake.paymentIntentId };
     fields[GOAL_FIELDS.stakeStatus] = { value: 'held' };
   }
-  const response = await container.privateCloudDatabase.saveRecords(
-    [{ recordType: GOAL_RECORD_TYPE, fields }],
-    zoneOptions()
-  );
-  if (response.hasErrors) {
-    throw new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
+  return saveNewRecordConfirmed(container.privateCloudDatabase, {
+    recordType: GOAL_RECORD_TYPE,
+    recordName: crypto.randomUUID(),
+    fields,
+  });
+}
+
+const CONFIRM_RETRY_DELAY_MS = 800;
+
+/// Saves a new record, and when the save reports a failure, checks whether it landed anyway
+/// before giving up. A save can succeed on Apple's side and still look like a network error
+/// here (the reply got lost), and for a staked goal giving up means cancelling the hold of a
+/// goal that exists. Retries the save once if the record really isn't there.
+export async function saveNewRecordConfirmed(
+  database: Pick<CKDatabase, 'saveRecords' | 'fetchRecords'>,
+  record: { recordType: string; recordName: string; fields: CKRecordFields },
+  retryDelayMs = CONFIRM_RETRY_DELAY_MS
+): Promise<CKRecord> {
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const response = await database.saveRecords([record], zoneOptions());
+      if (!response.hasErrors) return response.records[0];
+      lastError = new Error(response.errors?.[0]?.reason ?? 'Unknown CloudKit error');
+    } catch (error) {
+      lastError = error;
+    }
+    await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
+    try {
+      const existing = await database.fetchRecords([record.recordName], zoneOptions());
+      if (!existing.hasErrors && existing.records[0]) return existing.records[0];
+    } catch {
+      // Couldn't tell either way: try the save once more, then report the original error.
+    }
   }
-  return response.records[0];
+  throw lastError;
 }

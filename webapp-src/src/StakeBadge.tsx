@@ -19,6 +19,11 @@ function content(goal: Goal, tab: GoalStatus): { text: string; tint: keyof typeo
   const amount = formatStakeCents(goal.stakeAmountCents);
 
   if (tab === 'active') {
+    // A hold that's gone while the goal is still open (cancelled because creating the goal
+    // seemed to fail) means nothing is actually at risk.
+    if (goal.stakeStatus === 'released' || goal.stakeStatus === 'expired') {
+      return { text: 'No hold (released)', tint: 'gray' };
+    }
     return { text: `${amount} at risk`, tint: 'yellow' };
   }
 
