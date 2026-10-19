@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
-import { Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
+import { Button, Navbar, Preloader, Segmented, SegmentedButton, Sheet, Toggle } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
 import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
@@ -62,6 +62,10 @@ type AddGoalSheetProps = {
   onCreated: (goal: Goal) => void;
 };
 
+// Every step's content scrolls under its fixed top bar, so the bar's buttons stay reachable
+// however tall the content gets on a small phone.
+const SCROLL_BODY = 'max-h-[calc(100dvh-8rem)] overflow-y-auto px-4 pb-10 pt-4';
+
 /// Each staked goal places its own hold with a card approved just for it: Apple Pay's sheet
 /// where the browser supports it, otherwise a card form step. Nothing is saved.
 export function AddGoalSheet(props: AddGoalSheetProps) {
@@ -75,7 +79,9 @@ export function AddGoalSheet(props: AddGoalSheetProps) {
 function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) {
   const stripe = useStripe();
   const elements = useElements();
-  const [step, setStep] = useState<'form' | 'card'>('form');
+  // A staked goal goes form → confirm (what the stake means, the Terms checkbox, then Apple
+  // Pay) → card (only when there's no Apple Pay). Unstaked goals never leave the form.
+  const [step, setStep] = useState<'form' | 'confirm' | 'card'>('form');
   const [title, setTitle] = useState('');
   const [deadlineOptionId, setDeadlineOptionId] = useState<DeadlineOptionId>('1d'); // matches selectedDeadlineOption's default of .oneDay
   const [stakeOptionId, setStakeOptionId] = useState<StakeOptionId>('none');
@@ -101,7 +107,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
   }, [deadlineOptionId]);
 
   // A stake also needs the Terms checkbox, ticked fresh for each one.
-  const isValid = title.trim() !== '' && (!isStaked || agreedToTerms);
+  const isValid = title.trim() !== '';
   const summary = stakeSummary(stakeOption.cents, deadline, requiresVerification);
 
   // The Apple Pay handlers are registered once (the PaymentRequest effect only depends on
@@ -254,22 +260,28 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
     paymentRequest?.update(applePayAmounts(stakeOption.cents || STAKE_OPTIONS[1].cents));
   }, [paymentRequest, stakeOption.cents]);
 
-  /// Unstaked goals are a straight CloudKit write. Staked ones go to Apple Pay's sheet if the
-  /// browser has it, otherwise to the card step.
+  /// Unstaked goals are a straight CloudKit write. Staked ones go to the confirm step first.
   function handleAddTapped() {
     if (!isValid) return;
     setErrorMessage(null);
-    if (!isStaked) {
-      setIsSaving(true);
-      obtainVerificationToken()
-        .then((token) => createGoalRecord(token, null))
-        .then(finish)
-        .catch((error) => {
-          setErrorMessage(messageFor(error));
-          setIsSaving(false);
-        });
+    if (isStaked) {
+      setStep('confirm');
       return;
     }
+    setIsSaving(true);
+    obtainVerificationToken()
+      .then((token) => createGoalRecord(token, null))
+      .then(finish)
+      .catch((error) => {
+        setErrorMessage(messageFor(error));
+        setIsSaving(false);
+      });
+  }
+
+  /// The confirm step's button: Apple Pay's sheet if the browser has it, otherwise the card step.
+  function handleConfirmTapped() {
+    if (!agreedToTerms) return;
+    setErrorMessage(null);
     if (canUseApplePay && paymentRequest) {
       // Must run synchronously in this click handler, with no `await` before it: browsers
       // only allow PaymentRequest.show() as a direct result of a user gesture. Everything
@@ -315,7 +327,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         <Navbar
           title="Card Details"
           left={
-            <button onClick={() => setStep('form')} disabled={isSaving} className="px-2 text-primary">
+            <button onClick={() => setStep('confirm')} disabled={isSaving} className="px-2 text-primary">
               Back
             </button>
           }
@@ -331,11 +343,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
             )
           }
         />
-        <div className="px-4 pb-10 pt-6">
-          <p className="mb-4 px-2 text-center text-sm text-ios-secondary dark:text-ios-secondary-dark">
-            Miss the deadline and {formatStakeCents(stakeOption.cents)} is charged. Mark "{title.trim()}" done in time and the
-            hold is released.
-          </p>
+        <div className={SCROLL_BODY}>
           <input
             type="email"
             autoComplete="email"
@@ -347,6 +355,37 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           <div className="rounded-2xl border border-black/10 px-3 py-3 dark:border-white/15">
             <CardElement options={{ style: { base: { fontSize: '16px' } } }} />
           </div>
+          {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
+        </div>
+      </Sheet>
+    );
+  }
+
+  if (step === 'confirm') {
+    return (
+      <Sheet opened={opened} onBackdropClick={close} className="mx-auto max-w-(--k-app-max-w)">
+        <Navbar
+          title="Confirm Stake"
+          left={
+            <button onClick={() => setStep('form')} disabled={isSaving} className="px-2 text-primary">
+              Back
+            </button>
+          }
+        />
+        <div className={SCROLL_BODY}>
+          {/* Exactly this text, checkbox included, is sent with the hold as the consent
+              record (stakeConsent.ts). Full-size text, as the legal review asked. */}
+          <p className="text-center text-lg font-semibold text-black dark:text-white">"{title.trim()}"</p>
+          <StakeConsent summary={summary} agreed={agreedToTerms} onChange={setAgreedToTerms} />
+          {isSaving ? (
+            <div className="mt-6 flex justify-center">
+              <Preloader />
+            </div>
+          ) : (
+            <Button large rounded className="mt-6" disabled={!agreedToTerms} onClick={handleConfirmTapped}>
+              {canUseApplePay ? `Hold ${summary.amount}` : 'Continue'}
+            </Button>
+          )}
           {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
         </div>
       </Sheet>
@@ -372,13 +411,13 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
             </div>
           ) : (
             <button onClick={handleAddTapped} disabled={!isValid} className={`px-2 font-semibold ${isValid ? 'text-primary' : 'text-black/30 dark:text-white/30'}`}>
-              Add
+              {isStaked ? 'Next' : 'Add'}
             </button>
           )
         }
       />
 
-      <div className="px-4 pb-10 pt-4">
+      <div className={SCROLL_BODY}>
         {/* Plain input styled to match Stake/Deadline's label+control pattern below, rather
             than Konsta's ListInput/List card styling (its own label position/inset margin
             didn't line up with everything else on this sheet). */}
@@ -433,11 +472,6 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           </p>
         )}
 
-        {/* Last, right above where the Add tap goes: what the stake means, in full-size text,
-            with the deadline and friend rule as picked above. Exactly this text, checkbox
-            included, is sent with the hold as the consent record (stakeConsent.ts). */}
-        {isStaked && <StakeConsent summary={summary} agreed={agreedToTerms} onChange={setAgreedToTerms} />}
-
         {errorMessage && <p className="mt-4 px-2 text-center text-sm text-red-500">{errorMessage}</p>}
       </div>
     </Sheet>
@@ -455,10 +489,9 @@ function StakeConsent({
 }) {
   const link = 'text-primary underline';
   return (
-    <div className="mt-6 rounded-2xl border border-black/10 px-4 py-4 text-base text-black dark:border-white/15 dark:text-white">
+    <div className="mt-4 rounded-2xl border border-black/10 px-4 py-4 text-base text-black dark:border-white/15 dark:text-white">
       <p>
-        <strong>{summary.hold}</strong> Mark this goal done by <strong>{summary.deadline}</strong>.
-        {summary.doneBy && ` ${summary.doneBy}`} <strong>{summary.charge}</strong> {summary.refunds}
+        <strong>{summary.amount} hold on your card now.</strong> {summary.terms} {summary.refunds}
       </p>
       {summary.debitNote && <p className="mt-2">{summary.debitNote}</p>}
       <label className="mt-4 flex items-start gap-3">
@@ -469,11 +502,11 @@ function StakeConsent({
           className="mt-1 h-5 w-5 shrink-0 accent-primary"
         />
         <span>
-          I'm 18 or older, I'm in the United States, and I agree to the{' '}
+          I'm 18+, in the US, and agree to the{' '}
           <a href={TERMS_URL} target="_blank" rel="noopener" className={link}>
             Stake Terms
           </a>{' '}
-          (including the charge described above). I've read the{' '}
+          (including this charge). I've read the{' '}
           <a href={PRIVACY_URL} target="_blank" rel="noopener" className={link}>
             Privacy Policy
           </a>

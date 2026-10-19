@@ -4,17 +4,16 @@ import { formatStakeCents } from './useGoals';
 const DEBIT_NOTE_MIN_CENTS = 5000;
 
 export interface StakeSummary {
-  hold: string;
+  amount: string;
   deadline: string;
-  /// Sentence after the deadline, which differs for goals a friend has to confirm.
-  doneBy: string;
-  charge: string;
+  /// "Mark it done by …, or $5 is charged after the deadline.", with the friend rule when on.
+  terms: string;
   refunds: string;
   debitNote: string | null;
   checkbox: string;
 }
 
-/// "Tue, Oct 21, 9:00 PM PDT": the deadline as the payer reads it, time zone included,
+/// "Mon, Oct 19, 6:54 PM PDT": the deadline as the payer reads it, time zone included,
 /// since the Stake Terms define a goal's deadline as the time shown here.
 export function formatConsentDeadline(deadline: Date): string {
   return deadline.toLocaleString('en-US', {
@@ -27,33 +26,29 @@ export function formatConsentDeadline(deadline: Date): string {
   });
 }
 
-/// Everything the checkout shows above and on the Stake Terms checkbox. Rendered on screen and
-/// also sent with the hold as the consent record (consentRecord), so the two can't differ.
+/// Everything the confirm step shows. Rendered on screen and also sent with the hold as the
+/// consent record (consentRecord), so the two can't differ.
 export function stakeSummary(cents: number, deadline: Date, requiresVerification: boolean): StakeSummary {
   const amount = formatStakeCents(cents);
+  const when = formatConsentDeadline(deadline);
+  const doIt = requiresVerification ? 'Mark it done and have your friend confirm it' : 'Mark it done';
   return {
-    hold: `${amount} hold on your card now.`,
-    deadline: formatConsentDeadline(deadline),
-    doneBy: requiresVerification
-      ? 'Your friend has to confirm it and you have to mark it done by then.'
-      : '',
-    charge: `If it isn't, ${amount} is charged after the deadline.`,
-    refunds: "Charges aren't refundable except as described in the Stake Terms.",
+    amount,
+    deadline: when,
+    terms: `${doIt} by ${when}, or ${amount} is charged after the deadline.`,
+    refunds: 'Not refundable except as described in the Stake Terms.',
     debitNote:
       cents >= DEBIT_NOTE_MIN_CENTS
-        ? "If you use a debit card, the hold reduces your available balance until it's released or charged."
+        ? "On a debit card, the hold reduces your balance until it's released or charged."
         : null,
-    checkbox:
-      "I'm 18 or older, I'm in the United States, and I agree to the Stake Terms (including the charge described above). I've read the Privacy Policy.",
+    checkbox: "I'm 18+, in the US, and agree to the Stake Terms (including this charge). I've read the Privacy Policy.",
   };
 }
 
 export function consentRecord(summary: StakeSummary): string {
   return [
-    summary.hold,
-    `Mark this goal done by ${summary.deadline}.`,
-    summary.doneBy,
-    summary.charge,
+    `${summary.amount} hold on your card now.`,
+    summary.terms,
     summary.refunds,
     summary.debitNote ?? '',
     `[x] ${summary.checkbox}`,
