@@ -453,7 +453,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
         <BlockTitle>Deadline</BlockTitle>
         <Block>
-          <Segmented strong rounded>
+          <Segmented strong>
             {DEADLINE_OPTIONS.map((option) => (
               <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
                 {option.label}
