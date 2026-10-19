@@ -10,7 +10,7 @@ import { createStakedGoal } from './stakedGoal';
 import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
 import { PRIVACY_URL, STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
 
-const APPLE_PAY_LABEL = 'Goal Stake (charged if missed)';
+const APPLE_PAY_LABEL = 'Goal hold (charged only if deadline missed)';
 
 // The card form's email, remembered on this browser only as a convenience. Apple Pay hands
 // over the payer's email itself.
