@@ -4,6 +4,7 @@ import { PendingDeleteRow } from './PendingDeleteRow';
 import { ChecklistIcon, CheckCircleIcon, CircleIcon } from './icons';
 import { SwipeToDelete } from './SwipeToDelete';
 import { formatDeadline } from './useGoals';
+import { Secondary } from './Secondary';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
 import type { usePendingAction } from './usePendingAction';
@@ -83,7 +84,7 @@ function ActiveRow({
           </button>
         }
         title={<span className={`[overflow-wrap:anywhere] ${isPending ? 'line-through text-ios-secondary dark:text-ios-secondary-dark' : ''}`}>{goal.title}</span>}
-        subtitle={`Due ${formatDeadline(goal.deadline)}`}
+        subtitle={<Secondary>Due {formatDeadline(goal.deadline)}</Secondary>}
         footer={
           isPending ? (
             <div

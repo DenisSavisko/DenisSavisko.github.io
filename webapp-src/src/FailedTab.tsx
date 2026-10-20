@@ -4,6 +4,7 @@ import { PendingDeleteRow } from './PendingDeleteRow';
 import { XCircleIcon } from './icons';
 import { SwipeToDelete } from './SwipeToDelete';
 import { formatDeadline } from './useGoals';
+import { Secondary } from './Secondary';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
 import type { usePendingAction } from './usePendingAction';
@@ -67,7 +68,7 @@ function FailedRow({
       <ListItem
         component="div"
         title={<span className="[overflow-wrap:anywhere]">{goal.title}</span>}
-        subtitle={`Due ${formatDeadline(goal.deadline)}`}
+        subtitle={<Secondary>Due {formatDeadline(goal.deadline)}</Secondary>}
         after={
           <div className="flex flex-col items-end gap-1">
             <StakeBadge goal={goal} tab="failed" />
