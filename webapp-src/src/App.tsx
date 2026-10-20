@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { App as KonstaApp, Block, Fab, Icon as KonstaIcon, Navbar, Page, Preloader, Tabbar, TabbarLink, ToolbarPane } from 'konsta/react';
+import { App as KonstaApp, Block, Dialog, DialogButton, Fab, Icon as KonstaIcon, Navbar, Page, Preloader, Tabbar, TabbarLink, ToolbarPane } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
 import { useSystemDarkMode } from './useSystemDarkMode';
 import { useGoals, sortedByTab, mapRecord, type Goal } from './useGoals';
@@ -53,6 +53,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('active');
   const [token, setToken] = useState<string | null>(() => parseToken());
   const [isAddSheetOpen, setIsAddSheetOpen] = useState(false);
+  const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
   const [releaseGoal, setReleaseGoal] = useState<Goal | null>(null);
   const [shareTarget, setShareTarget] = useState<(ShareVerificationTarget & { headline: string; message: string }) | null>(
     null
@@ -250,7 +251,7 @@ export default function App() {
                 colors={active.length >= 3 ? DISABLED_FAB_COLORS : undefined}
                 aria-disabled={active.length >= 3}
                 icon={<PlusIcon className="h-7 w-7" />}
-                onClick={active.length >= 3 ? undefined : () => setIsAddSheetOpen(true)}
+                onClick={() => (active.length >= 3 ? setIsLimitDialogOpen(true) : setIsAddSheetOpen(true))}
               />
             </div>
             )}
@@ -290,6 +291,18 @@ export default function App() {
         onClose={closeVerifyModal}
       />
 
+      {/* The iPhone app's alert for a tap on the disabled add button. */}
+      <Dialog
+        opened={isLimitDialogOpen}
+        onBackdropClick={() => setIsLimitDialogOpen(false)}
+        title="Three goals at a time"
+        content="Finish or delete a goal to add another."
+        buttons={
+          <DialogButton strong onClick={() => setIsLimitDialogOpen(false)}>
+            OK
+          </DialogButton>
+        }
+      />
       <ReleaseSheet goal={releaseGoal} onClose={() => setReleaseGoal(null)} />
 
       <AddGoalSheet
