@@ -10,8 +10,8 @@ export function PendingDeleteRow({ title, startedAt, delayMs, onUndo }: { title:
       link
       chevron={false}
       onClick={onUndo}
-      media={<TrashIcon className="h-5 w-5 text-ios-secondary dark:text-ios-secondary-dark" />}
-      title={<span className="text-ios-secondary line-through dark:text-ios-secondary-dark">{title}</span>}
+      media={<TrashIcon className="h-5 w-5 text-black/55 dark:text-white/55" />}
+      title={<span className="text-black/55 line-through dark:text-white/55">{title}</span>}
       after={<span className="text-sm font-semibold">Undo</span>}
       footer={
         <div className="h-1 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">

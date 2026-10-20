@@ -173,7 +173,7 @@ export default function App() {
           // left untouched the whole time it's up to VerifyModal's onClose to ever clear it,
           // never just because sign-in hasn't happened yet — so the moment sign-in completes,
           // the still-present token opens the confirm sheet automatically.
-          <Block strong inset className="mt-10 text-center text-ios-secondary dark:text-ios-secondary-dark">
+          <Block strong inset className="mt-10 text-center text-black/55 dark:text-white/55">
             {authState.status === 'loading'
               ? 'Loading…'
               : token

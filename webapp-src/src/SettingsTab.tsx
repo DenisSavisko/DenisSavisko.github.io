@@ -53,7 +53,7 @@ export function SettingsTab() {
           href={IPHONE_APP_URL}
           media={<IphoneIcon className="h-6 w-6 text-primary" />}
           title={<span className="text-primary">MyMainGoals for iPhone</span>}
-          after={<ArrowUpForwardIcon className="h-4 w-4 text-ios-secondary dark:text-ios-secondary-dark" />}
+          after={<ArrowUpForwardIcon className="h-4 w-4 text-black/55 dark:text-white/55" />}
         />
       </List>
 
@@ -75,7 +75,7 @@ export function SettingsTab() {
           target="_blank"
           media={<DocumentIcon className="h-6 w-6 text-primary" />}
           title={<span className="text-primary">Stake Terms</span>}
-          after={<ArrowUpForwardIcon className="h-4 w-4 text-ios-secondary dark:text-ios-secondary-dark" />}
+          after={<ArrowUpForwardIcon className="h-4 w-4 text-black/55 dark:text-white/55" />}
         />
       </List>
     </>

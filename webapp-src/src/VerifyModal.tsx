@@ -154,7 +154,7 @@ function renderBody({
     return (
       <>
         <h2 className="text-lg font-semibold">Link Not Found</h2>
-        <p className="mt-2 text-sm text-ios-secondary dark:text-ios-secondary-dark">
+        <p className="mt-2 text-sm text-black/55 dark:text-white/55">
           This link may have expired or is no longer valid.
         </p>
       </>
@@ -168,7 +168,7 @@ function renderBody({
       <>
         <CheckCircleIcon className="mx-auto h-12 w-12 text-green-500" />
         <h2 className="mt-3 text-lg font-semibold">Confirmed!</h2>
-        <p className="text-sm text-ios-secondary dark:text-ios-secondary-dark">{info.task_title}</p>
+        <p className="text-sm text-black/55 dark:text-white/55">{info.task_title}</p>
       </>
     );
   }
@@ -178,18 +178,18 @@ function renderBody({
       <h2 className="text-lg font-semibold">{info.task_title}</h2>
       {info.stake_amount_cents != null && <p className="mt-1 text-sm">{formatStakeCents(info.stake_amount_cents)} is on the line</p>}
       {info.deadline != null && (
-        <p className="text-xs text-ios-secondary dark:text-ios-secondary-dark">Due {formatDeadline(new Date(info.deadline))}</p>
+        <p className="text-xs text-black/55 dark:text-white/55">Due {formatDeadline(new Date(info.deadline))}</p>
       )}
       <p className="mt-4 font-medium">Is it done?</p>
 
       {authStatus !== 'signed-in' ? (
-        <p className="mt-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
+        <p className="mt-4 text-sm text-black/55 dark:text-white/55">
           Sign in with your Apple ID to confirm.
         </p>
       ) : ownedGoal === undefined ? (
-        <p className="mt-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">Checking…</p>
+        <p className="mt-4 text-sm text-black/55 dark:text-white/55">Checking…</p>
       ) : ownedGoal ? (
-        <p className="mt-4 text-sm text-ios-secondary dark:text-ios-secondary-dark">
+        <p className="mt-4 text-sm text-black/55 dark:text-white/55">
           This is your own goal — a friend needs to confirm it.
         </p>
       ) : (

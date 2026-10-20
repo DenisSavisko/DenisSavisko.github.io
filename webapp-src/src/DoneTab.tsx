@@ -4,7 +4,6 @@ import { PendingDeleteRow } from './PendingDeleteRow';
 import { CheckCircleIcon } from './icons';
 import { SwipeToDelete } from './SwipeToDelete';
 import { formatDeadline } from './useGoals';
-import { Secondary } from './Secondary';
 import type { Goal, GoalsState } from './useGoals';
 import { StakeBadge } from './StakeBadge';
 import type { usePendingAction } from './usePendingAction';
@@ -55,7 +54,7 @@ function DoneRow({ goal, onDelete }: { goal: Goal; onDelete: (goal: Goal) => voi
       <ListItem
         component="div"
         title={<span className="[overflow-wrap:anywhere]">{goal.title}</span>}
-        subtitle={goal.completedDate ? <Secondary>Completed {formatDeadline(goal.completedDate)}</Secondary> : undefined}
+        text={goal.completedDate ? `Completed ${formatDeadline(goal.completedDate)}` : undefined}
         after={<StakeBadge goal={goal} tab="done" />}
       />
     </SwipeToDelete>

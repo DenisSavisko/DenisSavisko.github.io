@@ -38,7 +38,7 @@ export function GoalListPage({
     return (
       <Block strong inset className="flex flex-col items-center gap-3 py-10 text-center">
         {status === 'loading' && <Preloader />}
-        <p className="text-ios-secondary dark:text-ios-secondary-dark">
+        <p className="text-black/55 dark:text-white/55">
           {status === 'loading' ? 'Loading your goals…' : 'Sign in with your Apple ID (above) to see your goals.'}
         </p>
       </Block>
@@ -55,7 +55,7 @@ export function GoalListPage({
 
   if (goals.length === 0) {
     return (
-      <Block strong inset className="flex flex-col items-center gap-2 py-10 text-center text-ios-secondary dark:text-ios-secondary-dark">
+      <Block strong inset className="flex flex-col items-center gap-2 py-10 text-center text-black/55 dark:text-white/55">
         <span className="[&>svg]:h-10 [&>svg]:w-10">{emptyIcon}</span>
         <p className="font-semibold text-black dark:text-white">{emptyTitle}</p>
         <p className="text-sm">{emptyText}</p>

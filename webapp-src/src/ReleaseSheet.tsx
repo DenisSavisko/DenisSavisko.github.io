@@ -15,10 +15,10 @@ export function ReleaseSheet({ goal, onClose }: { goal: Goal | null; onClose: ()
     <Sheet opened={goal != null} onBackdropClick={onClose} className="mx-auto max-w-(--k-app-max-w)">
       <div className="px-6 pb-10 pt-10 text-center">
         <h2 className="text-lg font-semibold">{amount} will be charged</h2>
-        <p className="mt-2 text-sm text-ios-secondary [overflow-wrap:anywhere] dark:text-ios-secondary-dark">
+        <p className="mt-2 text-sm text-black/55 [overflow-wrap:anywhere] dark:text-white/55">
           "{goal?.title}" wasn't marked done by its deadline. Forgetting to mark it done counts as missing it.
         </p>
-        <p className="mt-2 text-sm text-ios-secondary dark:text-ios-secondary-dark">
+        <p className="mt-2 text-sm text-black/55 dark:text-white/55">
           Something went wrong? Contact support. Keep in mind that after 3 releases on request, you can't stake anymore.
         </p>
         {supportHref && (

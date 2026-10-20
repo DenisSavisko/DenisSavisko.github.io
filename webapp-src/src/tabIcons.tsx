@@ -22,11 +22,11 @@ export function TabGoalsIcon(props: SVGProps<SVGSVGElement>) {
     <svg viewBox="0 0 56 56" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
       <mask id={mask}>
         <rect width="56" height="56" fill="white" stroke="none" />
-        <path d="M 13.2 18.7 L 15.6 21.2 L 19.9 15.4" stroke="black" strokeWidth={2.3} />
+        <path d="M 13.9 18.7 L 16.5 21.4 L 21.2 15.1" stroke="black" strokeWidth={2.5} />
       </mask>
-      <circle cx={16.5} cy={18.5} r={7.2} fill="currentColor" stroke="none" mask={`url(#${mask})`} />
-      <circle cx={16.5} cy={37.5} r={6.1} strokeWidth={2.4} />
-      <path d="M 28 18.5 L 46 18.5 M 28 37.5 L 46 37.5" strokeWidth={2.6} />
+      <circle cx={17.5} cy={18.5} r={7.8} fill="currentColor" stroke="none" mask={`url(#${mask})`} />
+      <circle cx={17.5} cy={37.5} r={6.6} strokeWidth={2.4} />
+      <path d="M 30.5 18.5 L 45 18.5 M 30.5 37.5 L 45 37.5" strokeWidth={2.6} />
     </svg>
   );
 }
