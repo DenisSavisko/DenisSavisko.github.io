@@ -37,10 +37,11 @@ export function GoalListPage({
   if (status === 'idle' || status === 'loading') {
     return (
       <Block strong inset className="flex flex-col items-center gap-3 py-10 text-center">
-        {status === 'loading' && <Preloader />}
-        <p className="text-black/55 dark:text-white/55">
-          {status === 'loading' ? 'Loading your goals…' : 'Sign in with your Apple ID (above) to see your goals.'}
-        </p>
+        {/* Idle is the moment between CloudKit confirming sign-in and the first query
+            starting, since this only renders when signed in, so it's loading too. Its old
+            "Sign in with your Apple ID" text flashed on every reload. */}
+        <Preloader />
+        <p className="text-black/55 dark:text-white/55">Loading your goals…</p>
       </Block>
     );
   }

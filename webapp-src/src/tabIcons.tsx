@@ -14,19 +14,20 @@ function icon(d: string, props: SVGProps<SVGSVGElement>, transform?: string) {
   );
 }
 
-/// SF Symbol "checklist": a checked and an unchecked row. The check is cut out of its circle
-/// with a mask, so it shows the tab bar through it like the real symbol.
+/// SF Symbol "checklist": a checked and an unchecked row. Geometry measured off the real
+/// symbol, at the same scale as the Done icon here, so the two match in the tab bar like on
+/// iOS. The check is cut out of its circle with a mask, showing the tab bar through it.
 export function TabGoalsIcon(props: SVGProps<SVGSVGElement>) {
   const mask = useId();
   return (
     <svg viewBox="0 0 56 56" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" aria-hidden {...props}>
       <mask id={mask}>
         <rect width="56" height="56" fill="white" stroke="none" />
-        <path d="M 13.9 18.7 L 16.5 21.4 L 21.2 15.1" stroke="black" strokeWidth={2.5} />
+        <path d="M 7.7 15 L 10.5 18.6 L 15.6 10.8" stroke="black" strokeWidth={2.5} />
       </mask>
-      <circle cx={17.5} cy={18.5} r={7.8} fill="currentColor" stroke="none" mask={`url(#${mask})`} />
-      <circle cx={17.5} cy={37.5} r={6.6} strokeWidth={2.4} />
-      <path d="M 30.5 18.5 L 45 18.5 M 30.5 37.5 L 45 37.5" strokeWidth={2.6} />
+      <circle cx={11.7} cy={14.5} r={10.05} fill="currentColor" stroke="none" mask={`url(#${mask})`} />
+      <circle cx={11.7} cy={41.6} r={8.37} strokeWidth={3.37} />
+      <path d="M 29 14.5 L 52.3 14.5 M 29 41.6 L 52.3 41.6" strokeWidth={3.75} />
     </svg>
   );
 }

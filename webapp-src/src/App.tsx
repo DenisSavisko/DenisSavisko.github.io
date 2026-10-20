@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { App as KonstaApp, Block, Fab, Icon as KonstaIcon, Navbar, Page, Tabbar, TabbarLink, ToolbarPane } from 'konsta/react';
+import { App as KonstaApp, Block, Fab, Icon as KonstaIcon, Navbar, Page, Preloader, Tabbar, TabbarLink, ToolbarPane } from 'konsta/react';
 import { useCloudKitAuth } from './useCloudKitAuth';
 import { useSystemDarkMode } from './useSystemDarkMode';
 import { useGoals, sortedByTab, mapRecord, type Goal } from './useGoals';
@@ -42,6 +42,12 @@ function parseToken(): string | null {
   const match = /^#verify\/(.+)$/.exec(window.location.hash);
   return match ? decodeURIComponent(match[1]) : null;
 }
+
+/// A disabled .glassProminent button on iOS: gray fill, dimmed gray glyph.
+const DISABLED_FAB_COLORS = {
+  bgIos: 'bg-black/10 dark:bg-white/15',
+  textIos: 'text-black/30 dark:text-white/30',
+};
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('active');
@@ -173,13 +179,18 @@ export default function App() {
           // left untouched the whole time it's up to VerifyModal's onClose to ever clear it,
           // never just because sign-in hasn't happened yet — so the moment sign-in completes,
           // the still-present token opens the confirm sheet automatically.
-          <Block strong inset className="mt-10 text-center text-black/55 dark:text-white/55">
-            {authState.status === 'loading'
-              ? 'Loading…'
-              : token
-                ? "Sign in to confirm your friend's goal."
-                : 'Focus on just three goals.'}
-          </Block>
+          authState.status === 'loading' ? (
+            // The same placeholder the goal list shows while it loads, so a reload goes
+            // straight from this to the goals with no change in between.
+            <Block strong inset className="flex flex-col items-center gap-3 py-10 text-center">
+              <Preloader />
+              <p className="text-black/55 dark:text-white/55">Loading your goals…</p>
+            </Block>
+          ) : (
+            <Block strong inset className="mt-10 text-center text-black/55 dark:text-white/55">
+              {token ? "Sign in to confirm your friend's goal." : 'Focus on just three goals.'}
+            </Block>
+          )
         ) : (
           <>
             {/* Only the active tab is ever mounted — as well as being simpler, this and the
@@ -229,11 +240,12 @@ export default function App() {
             <div className="pointer-events-none fixed inset-x-0 bottom-32 z-10 mx-auto flex max-w-(--k-app-max-w) justify-end pr-4">
               {/* Fab renders as an <a> by default, which has no native `disabled` — matches
                   ContentView's `.disabled(!store.canAddTask)` visually/interactively by hand
-                  instead. Sized up from Konsta's default 44px (h-11/w-11) — !h-/!w- since
+                  instead, in iOS's gray for a disabled prominent button. Sized up from Konsta's default 44px (h-11/w-11) — !h-/!w- since
                   those are the same specificity as Fab's own base classes and cascade order
                   between the two isn't something to rely on. */}
               <Fab
-                className={`pointer-events-auto !h-16 !w-16 ${active.length >= 3 ? 'opacity-40' : ''}`}
+                className="pointer-events-auto !h-16 !w-16"
+                colors={active.length >= 3 ? DISABLED_FAB_COLORS : undefined}
                 aria-disabled={active.length >= 3}
                 icon={<PlusIcon className="h-7 w-7" />}
                 onClick={active.length >= 3 ? undefined : () => setIsAddSheetOpen(true)}
