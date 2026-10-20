@@ -169,7 +169,7 @@ export default function App() {
       <Page ref={pageRef}>
         {/* Large title, like the iOS app's: left-aligned 34px bold that shrinks into the small
             centered title on scroll (Konsta tracks the Page it sits in). */}
-        <Navbar large transparent title={isSignedIn ? TAB_TITLES[tab] : 'MyMainGoals'} />
+        <Navbar large transparent title={isSignedIn ? TAB_TITLES[tab] : TAB_TITLES.active} />
         <AppleSignInButton visible={!isSignedIn && authState.status !== 'loading'} />
 
         {!isSignedIn ? (
@@ -244,7 +244,9 @@ export default function App() {
                   those are the same specificity as Fab's own base classes and cascade order
                   between the two isn't something to rely on. */}
               <Fab
-                className="pointer-events-auto !h-16 !w-16"
+                // Konsta's glass edge is tinted with --color-primary, which read as a blue halo
+                // on the gray disabled button.
+                className={`pointer-events-auto !h-16 !w-16 ${active.length >= 3 ? '[--color-primary:#aeaeb2]' : ''}`}
                 colors={active.length >= 3 ? DISABLED_FAB_COLORS : undefined}
                 aria-disabled={active.length >= 3}
                 icon={<PlusIcon className="h-7 w-7" />}

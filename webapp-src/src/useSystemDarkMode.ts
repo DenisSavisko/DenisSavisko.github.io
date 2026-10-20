@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 
 /// Every Tailwind `dark:` class in this app — both hand-written ones and Konsta's own (see
 /// node_modules/konsta/shared/colors/*.js, e.g. `bg-ios-light-surface dark:bg-ios-dark-surface`)
@@ -21,7 +21,9 @@ export function useSystemDarkMode(): boolean {
     return () => mql.removeEventListener('change', onChange);
   }, []);
 
-  useEffect(() => {
+  // Layout effect, so the class is on before the first paint; a plain effect runs after it,
+  // and the first frame came out light in dark mode.
+  useLayoutEffect(() => {
     document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
