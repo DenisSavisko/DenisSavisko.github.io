@@ -10,6 +10,7 @@ import { ActiveTab } from './ActiveTab';
 import { DoneTab } from './DoneTab';
 import { FailedTab, pendingFailedCount } from './FailedTab';
 import { VerifyModal } from './VerifyModal';
+import { Intro } from './Intro';
 import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
 import { SettingsTab } from './SettingsTab';
@@ -187,10 +188,12 @@ export default function App() {
               <Preloader />
               <p className="text-black/55 dark:text-white/55">Loading your goals…</p>
             </Block>
-          ) : (
+          ) : token ? (
             <Block strong inset className="mt-10 text-center text-black/55 dark:text-white/55">
-              {token ? "Sign in to confirm your friend's goal." : 'Focus on just three goals.'}
+              Sign in to confirm your friend's goal.
             </Block>
+          ) : (
+            <Intro />
           )
         ) : (
           <>

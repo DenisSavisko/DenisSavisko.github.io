@@ -108,3 +108,47 @@ export function DocumentIcon(props: SVGProps<SVGSVGElement>) {
     props
   );
 }
+
+// The intro's row icons, after SF Symbols target, clock, person.2 and dollarsign.circle.
+export function TargetIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+    </>,
+    props
+  );
+}
+
+export function ClockIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5H8.5" />
+    </>,
+    props
+  );
+}
+
+export function PeopleIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(
+    <>
+      <circle cx="8.5" cy="8" r="3" />
+      <circle cx="16" cy="8" r="3" />
+      <path d="M2.5 19c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5z" />
+      <path d="M16.5 13.5c3 0 5 2.2 5 5.5h-4" />
+    </>,
+    props
+  );
+}
+
+export function DollarCircleIcon(props: SVGProps<SVGSVGElement>) {
+  return svg(
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M14.8 9.2c-.4-1-1.5-1.7-2.8-1.7-1.6 0-2.8.9-2.8 2.2 0 3 5.8 1.6 5.8 4.6 0 1.3-1.3 2.2-3 2.2-1.4 0-2.6-.7-3-1.8M12 6v1.5m0 9V18" />
+    </>,
+    props
+  );
+}
