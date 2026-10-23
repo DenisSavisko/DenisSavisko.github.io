@@ -466,7 +466,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         </List>
         {requiresVerification && (
           <BlockFooter>
-            Anyone with the link can see and confirm this goal. Share it only with someone you trust.
+            You can't mark it done until your friend confirms.
           </BlockFooter>
         )}
 
