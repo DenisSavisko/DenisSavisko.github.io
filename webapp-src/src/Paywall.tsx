@@ -101,7 +101,7 @@ export function Paywall({ subscription }: { subscription: Subscription }) {
         {selected && <p className="text-center text-xs text-black/55 dark:text-white/55">{terms(selected)}</p>}
         <p className="text-center text-xs text-black/55 dark:text-white/55">
           Subscribed on iPhone? It unlocks here with the same Apple Account.{' '}
-          <a href="https://mymaingoals.app/privacy/" className="text-primary">
+          <a href="https://mymaingoals.app/web-privacy-policy.html" className="text-primary">
             Privacy
           </a>
         </p>
