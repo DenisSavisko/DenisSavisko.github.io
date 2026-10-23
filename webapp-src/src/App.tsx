@@ -23,6 +23,7 @@ import { usePendingAction } from './usePendingAction';
 import { useBackgroundSync } from './useBackgroundSync';
 import { TabDoneIcon, TabFailedIcon, TabGoalsIcon, TabSettingsIcon } from './tabIcons';
 import { PlusIcon } from './icons';
+import { useScrollLock } from './useScrollLock';
 
 type Tab = 'active' | 'done' | 'failed' | 'settings';
 
@@ -175,6 +176,11 @@ export default function App() {
   // The paywall's own headline is the page's heading; the app's large title over it looked
   // misaligned.
   const isShowingPaywall = isSignedIn && !hasAccess && !isCheckingAccess;
+
+  // Matches each one's `opened` below.
+  const isOverlayOpen =
+    (isSignedIn && token != null) || isLimitDialogOpen || releaseGoal != null || isAddSheetOpen || shareTarget != null;
+  useScrollLock(isOverlayOpen, pageRef);
 
   return (
     <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
