@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { CardElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
 import type { PaymentRequest } from '@stripe/stripe-js';
 import {
   Block,
   BlockFooter,
-  BlockTitle,
   Button,
   Checkbox,
   Link,
@@ -422,51 +421,47 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         }
       />
 
-      {/* Mirrors AddTaskSheet's Form: one titled section per field, in Konsta's inset-grouped
-          List/Block, the same way iOS's Form lays out Sections. */}
+      {/* No section titles: the placeholder says what the text is, and each row carries its
+          own label on the left, so the form stays short. */}
       <div className={STEP_BODY}>
-        <BlockTitle>Goal</BlockTitle>
         <List strongIos insetIos>
-          <ListInput
-            type="text"
-            placeholder="What do you want to do?"
-            // Same cap as the iPhone app and the backend (friend links reject longer).
-            maxLength={200}
-            value={title}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTitle(e.target.value)}
-            clearButton={title !== ''}
-            onClear={() => setTitle('')}
-          />
+          <li>
+            <GoalTitleInput value={title} onChange={setTitle} />
+          </li>
         </List>
 
-        <BlockTitle>Stake</BlockTitle>
-        <Block>
-          <Segmented strong rounded>
-            {STAKE_OPTIONS.map((option) => (
-              <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
-                {option.label}
-              </SegmentedButton>
-            ))}
-          </Segmented>
-        </Block>
-
-        {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
-        <BlockTitle>Deadline</BlockTitle>
-        <Block>
-          <Segmented strong rounded>
-            {DEADLINE_OPTIONS.map((option) => (
-              <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
-                {option.label}
-              </SegmentedButton>
-            ))}
-          </Segmented>
-        </Block>
+        {/* Segmented controls of relative offsets, not a date/time picker, like iOS. */}
+        <List strongIos insetIos>
+          <ListItem
+            title="Stake"
+            after={
+              <Segmented strong rounded className="w-60">
+                {STAKE_OPTIONS.map((option) => (
+                  <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
+                    {option.label}
+                  </SegmentedButton>
+                ))}
+              </Segmented>
+            }
+          />
+          <ListItem
+            title="Deadline"
+            after={
+              <Segmented strong rounded className="w-60">
+                {DEADLINE_OPTIONS.map((option) => (
+                  <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
+                    {option.label}
+                  </SegmentedButton>
+                ))}
+              </Segmented>
+            }
+          />
+        </List>
         <BlockFooter>Due around {formatDeadline(deadline)}</BlockFooter>
 
         {/* Not gated on staking, mirroring AddTaskSheet: a friend confirming you did the
             thing stands on its own, and createVerification's stake argument is already
             nullable. */}
-        <BlockTitle>Verification</BlockTitle>
         <List strongIos insetIos>
           <ListItem
             title="Require a friend's confirmation"
@@ -482,6 +477,38 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
         <ErrorMessage message={errorMessage} />
       </div>
     </Sheet>
+  );
+}
+
+/// The goal's title: wraps onto more lines and grows as it does, instead of scrolling
+/// sideways. Still one line of text, so Return finishes typing and pasted line breaks become
+/// spaces.
+function GoalTitleInput({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+  useLayoutEffect(() => {
+    const textarea = ref.current;
+    if (!textarea) return;
+    textarea.style.height = 'auto';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [value]);
+  return (
+    <textarea
+      ref={ref}
+      rows={1}
+      placeholder="What do you want to do?"
+      // Same cap as the iPhone app and the backend (friend links reject longer).
+      maxLength={200}
+      enterKeyHint="done"
+      value={value}
+      onChange={(e) => onChange(e.target.value.replace(/\s*\n\s*/g, ' '))}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.currentTarget.blur();
+        }
+      }}
+      className="block w-full resize-none overflow-hidden bg-transparent px-4 py-[11px] text-[17px] leading-[22px] text-black outline-none placeholder:text-black/30 dark:text-white dark:placeholder:text-white/30"
+    />
   );
 }
 
