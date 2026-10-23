@@ -32,10 +32,6 @@ const TABS = [
   { id: 'settings', label: 'Settings', Icon: TabSettingsIcon },
 ] as const;
 
-/// Goals created before this keep the app free for their owner (see isGrandfathered); the
-/// iPhone app uses the same date (ContentView.paywallStart).
-const PAYWALL_START = new Date('2026-10-27T00:00:00Z');
-
 const TAB_TITLES: Record<Tab, string> = {
   active: 'My Main Goals',
   done: 'Done',
@@ -172,16 +168,9 @@ export default function App() {
 
   const isSignedIn = authState.status === 'signed-in';
   const subscription = useSubscription(authState.status === 'signed-in' ? authState.userRecordName : null);
-  // Same rule as the iPhone app: paid access, or a goal from before the paywall existed.
-  // ?paywall turns grandfathering off, to test the real checkout from an account that has
-  // older goals. It can only take access away, never give it.
-  const isGrandfathered =
-    !new URLSearchParams(window.location.search).has('paywall') &&
-    goalsState.status === 'loaded' &&
-    goalsState.goals.some((g) => g.createdAt && g.createdAt < PAYWALL_START);
-  const hasAccess = subscription.access === 'granted' || isGrandfathered;
-  const isCheckingAccess =
-    !hasAccess && (subscription.access === 'unknown' || goalsState.status === 'idle' || goalsState.status === 'loading');
+  // Paid access, a gift (a RevenueCat grant) included; same rule as the iPhone app.
+  const hasAccess = subscription.access === 'granted';
+  const isCheckingAccess = subscription.access === 'unknown';
   // The paywall's own headline is the page's heading; the app's large title over it looked
   // misaligned.
   const isShowingPaywall = isSignedIn && !hasAccess && !isCheckingAccess;
