@@ -13,6 +13,7 @@ export interface Goal {
   recordChangeTag: string;
   title: string;
   deadline: Date;
+  createdAt: Date | null;
   isDone: boolean;
   completedDate: Date | null;
   stakeAmountCents: number | null;
@@ -40,12 +41,14 @@ function fieldValue(record: CKRecord, key: string): unknown {
 export function mapRecord(record: CKRecord): Goal {
   const deadline = fieldValue(record, GOAL_FIELDS.deadline);
   const completedDate = fieldValue(record, GOAL_FIELDS.completedDate);
+  const createdAt = fieldValue(record, GOAL_FIELDS.createdAt);
   return {
     id: String(fieldValue(record, GOAL_FIELDS.id) ?? record.recordName),
     recordName: record.recordName,
     recordChangeTag: record.recordChangeTag ?? '',
     title: String(fieldValue(record, GOAL_FIELDS.title) ?? ''),
     deadline: new Date(deadline as string | number),
+    createdAt: createdAt != null ? new Date(createdAt as string | number) : null,
     isDone: Boolean(fieldValue(record, GOAL_FIELDS.isDone)),
     completedDate: completedDate != null ? new Date(completedDate as string | number) : null,
     stakeAmountCents: (fieldValue(record, GOAL_FIELDS.stakeAmountCents) as number | null) ?? null,

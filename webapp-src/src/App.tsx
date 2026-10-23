@@ -11,6 +11,8 @@ import { DoneTab } from './DoneTab';
 import { FailedTab, pendingFailedCount } from './FailedTab';
 import { VerifyModal } from './VerifyModal';
 import { Intro } from './Intro';
+import { Paywall } from './Paywall';
+import { useSubscription } from './useSubscription';
 import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
 import { SettingsTab } from './SettingsTab';
@@ -29,6 +31,10 @@ const TABS = [
   { id: 'failed', label: 'Failed', Icon: TabFailedIcon },
   { id: 'settings', label: 'Settings', Icon: TabSettingsIcon },
 ] as const;
+
+/// Goals created before this keep the app free for their owner (see isGrandfathered); the
+/// iPhone app uses the same date (ContentView.paywallStart).
+const PAYWALL_START = new Date('2026-10-27T00:00:00Z');
 
 const TAB_TITLES: Record<Tab, string> = {
   active: 'My Main Goals',
@@ -165,6 +171,17 @@ export default function App() {
   }
 
   const isSignedIn = authState.status === 'signed-in';
+  const subscription = useSubscription(authState.status === 'signed-in' ? authState.userRecordName : null);
+  // Same rule as the iPhone app: paid access, or a goal from before the paywall existed.
+  // ?paywall turns grandfathering off, to test the real checkout from an account that has
+  // older goals. It can only take access away, never give it.
+  const isGrandfathered =
+    !new URLSearchParams(window.location.search).has('paywall') &&
+    goalsState.status === 'loaded' &&
+    goalsState.goals.some((g) => g.createdAt && g.createdAt < PAYWALL_START);
+  const hasAccess = subscription.access === 'granted' || isGrandfathered;
+  const isCheckingAccess =
+    !hasAccess && (subscription.access === 'unknown' || goalsState.status === 'idle' || goalsState.status === 'loading');
 
   return (
     <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
@@ -195,6 +212,15 @@ export default function App() {
           ) : (
             <Intro />
           )
+        ) : isCheckingAccess ? (
+          <Block strong inset className="flex flex-col items-center gap-3 py-10 text-center">
+            <Preloader />
+            <p className="text-black/55 dark:text-white/55">Loading your goals…</p>
+          </Block>
+        ) : !hasAccess ? (
+          // A friend's confirmation link still works from here: VerifyModal sits outside
+          // this, and confirming never needs paying.
+          <Paywall subscription={subscription} />
         ) : (
           <>
             {/* Only the active tab is ever mounted — as well as being simpler, this and the

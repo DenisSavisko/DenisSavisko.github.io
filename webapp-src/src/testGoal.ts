@@ -8,6 +8,7 @@ export function makeGoal(overrides: Partial<Goal> = {}): Goal {
     recordChangeTag: 'tag',
     title: 'Goal',
     deadline: new Date(Date.now() + 3_600_000),
+    createdAt: new Date(),
     isDone: false,
     completedDate: null,
     stakeAmountCents: null,
