@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Button, Preloader, Sheet } from 'konsta/react';
+import { Button, Preloader } from 'konsta/react';
 import { ensureSignedIn } from './supabase';
 import { confirmVerification, getVerification, type VerificationInfo } from './verification';
 import { getCloudKitContainer, ownsGoalWithVerificationCode } from './cloudkit';
 import type { CloudKitAuthState } from './useCloudKitAuth';
 import { formatDeadline, formatStakeCents, type Goal } from './useGoals';
 import { CheckCircleIcon, XMarkIcon } from './icons';
+import { SwipeSheet } from './SwipeSheet';
 
 type ConfirmState = 'idle' | 'confirming' | 'confirmed' | 'error';
 
@@ -105,7 +106,7 @@ export function VerifyModal({
   }
 
   return (
-    <Sheet opened={token != null} onBackdropClick={onClose} className="mx-auto max-w-(--k-app-max-w)">
+    <SwipeSheet opened={token != null} onClose={onClose} className="mx-auto max-w-(--k-app-max-w)">
       <div className="relative px-6 pb-10 pt-12 text-center">
         <button
           onClick={onClose}
@@ -125,7 +126,7 @@ export function VerifyModal({
           onConfirm: handleConfirm,
         })}
       </div>
-    </Sheet>
+    </SwipeSheet>
   );
 }
 

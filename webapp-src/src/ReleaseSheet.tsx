@@ -1,6 +1,7 @@
-import { Button, Sheet } from 'konsta/react';
+import { Button } from 'konsta/react';
 import { formatStakeCents, type Goal } from './useGoals';
 import { stakeSupportMailto } from './support';
+import { SwipeSheet } from './SwipeSheet';
 
 /// For a missed goal whose hold is still held. There's no self-serve release: this explains
 /// that and hands off to support with the stake's details filled in. Kept as an obvious
@@ -12,7 +13,7 @@ export function ReleaseSheet({ goal, onClose }: { goal: Goal | null; onClose: ()
       ? stakeSupportMailto({ goalTitle: goal.title, amountCents: goal.stakeAmountCents, paymentIntentId: goal.stripePaymentIntentId })
       : null;
   return (
-    <Sheet opened={goal != null} onBackdropClick={onClose} className="mx-auto max-w-(--k-app-max-w)">
+    <SwipeSheet opened={goal != null} onClose={onClose} className="mx-auto max-w-(--k-app-max-w)">
       <div className="px-6 pb-10 pt-10 text-center">
         <h2 className="text-lg font-semibold">{amount} will be charged</h2>
         <p className="mt-2 text-sm text-black/55 [overflow-wrap:anywhere] dark:text-white/55">
@@ -30,6 +31,6 @@ export function ReleaseSheet({ goal, onClose }: { goal: Goal | null; onClose: ()
           Done
         </Button>
       </div>
-    </Sheet>
+    </SwipeSheet>
   );
 }
