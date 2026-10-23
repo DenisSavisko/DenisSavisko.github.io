@@ -12,8 +12,6 @@ import {
   ListItem,
   Navbar,
   Preloader,
-  Segmented,
-  SegmentedButton,
   Sheet,
   Toggle,
 } from 'konsta/react';
@@ -24,6 +22,7 @@ import { createHold, releaseHold, StakingError } from './staking';
 import { createStakedGoal } from './stakedGoal';
 import { formatStakeCents, mapRecord, type Goal } from './useGoals';
 import { consentRecord, stakeSummary } from './stakeConsent';
+import { SwipeSegmented } from './SwipeSegmented';
 import { PRIVACY_URL, STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
 
 // Apple Pay shows the total as "Pay <label>", and Apple's guidelines want the business name
@@ -432,26 +431,14 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
         <List strongIos insetIos>
           <LabeledRow label="Stake">
-            <Segmented strong rounded>
-              {STAKE_OPTIONS.map((option) => (
-                <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
-                  {option.label}
-                </SegmentedButton>
-              ))}
-            </Segmented>
+            <SwipeSegmented options={STAKE_OPTIONS} value={stakeOptionId} onChange={setStakeOptionId} />
           </LabeledRow>
         </List>
 
         {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
         <List strongIos insetIos>
           <LabeledRow label="Deadline">
-            <Segmented strong rounded>
-              {DEADLINE_OPTIONS.map((option) => (
-                <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
-                  {option.label}
-                </SegmentedButton>
-              ))}
-            </Segmented>
+            <SwipeSegmented options={DEADLINE_OPTIONS} value={deadlineOptionId} onChange={setDeadlineOptionId} />
           </LabeledRow>
         </List>
 
