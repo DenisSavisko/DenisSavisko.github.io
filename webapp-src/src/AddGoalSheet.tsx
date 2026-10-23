@@ -22,7 +22,7 @@ import { createVerification } from './verification';
 import { ensureSignedIn } from './supabase';
 import { createHold, releaseHold, StakingError } from './staking';
 import { createStakedGoal } from './stakedGoal';
-import { formatDeadline, formatStakeCents, mapRecord, type Goal } from './useGoals';
+import { formatStakeCents, mapRecord, type Goal } from './useGoals';
 import { consentRecord, stakeSummary } from './stakeConsent';
 import { PRIVACY_URL, STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
 
@@ -430,34 +430,30 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           </li>
         </List>
 
-        {/* Segmented controls of relative offsets, not a date/time picker, like iOS. */}
         <List strongIos insetIos>
-          <ListItem
-            title="Stake"
-            after={
-              <Segmented strong rounded className="w-60">
-                {STAKE_OPTIONS.map((option) => (
-                  <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
-                    {option.label}
-                  </SegmentedButton>
-                ))}
-              </Segmented>
-            }
-          />
-          <ListItem
-            title="Deadline"
-            after={
-              <Segmented strong rounded className="w-60">
-                {DEADLINE_OPTIONS.map((option) => (
-                  <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
-                    {option.label}
-                  </SegmentedButton>
-                ))}
-              </Segmented>
-            }
-          />
+          <LabeledRow label="Stake">
+            <Segmented strong rounded>
+              {STAKE_OPTIONS.map((option) => (
+                <SegmentedButton key={option.id} active={stakeOptionId === option.id} onClick={() => setStakeOptionId(option.id)}>
+                  {option.label}
+                </SegmentedButton>
+              ))}
+            </Segmented>
+          </LabeledRow>
         </List>
-        <BlockFooter>Due around {formatDeadline(deadline)}</BlockFooter>
+
+        {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
+        <List strongIos insetIos>
+          <LabeledRow label="Deadline">
+            <Segmented strong rounded>
+              {DEADLINE_OPTIONS.map((option) => (
+                <SegmentedButton key={option.id} active={deadlineOptionId === option.id} onClick={() => setDeadlineOptionId(option.id)}>
+                  {option.label}
+                </SegmentedButton>
+              ))}
+            </Segmented>
+          </LabeledRow>
+        </List>
 
         {/* Not gated on staking, mirroring AddTaskSheet: a friend confirming you did the
             thing stands on its own, and createVerification's stake argument is already
@@ -492,23 +488,50 @@ function GoalTitleInput({ value, onChange }: { value: string; onChange: (value: 
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [value]);
   return (
-    <textarea
-      ref={ref}
-      rows={1}
-      placeholder="What do you want to do?"
-      // Same cap as the iPhone app and the backend (friend links reject longer).
-      maxLength={200}
-      enterKeyHint="done"
-      value={value}
-      onChange={(e) => onChange(e.target.value.replace(/\s*\n\s*/g, ' '))}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          e.currentTarget.blur();
-        }
-      }}
-      className="block w-full resize-none overflow-hidden bg-transparent px-4 py-[11px] text-[17px] leading-[22px] text-black outline-none placeholder:text-black/30 dark:text-white dark:placeholder:text-white/30"
-    />
+    <div className="relative">
+      <textarea
+        ref={ref}
+        rows={1}
+        placeholder="What do you want to do?"
+        // Same cap as the iPhone app and the backend (friend links reject longer).
+        maxLength={200}
+        enterKeyHint="done"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/\s*\n\s*/g, ' '))}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            e.currentTarget.blur();
+          }
+        }}
+        className="block w-full resize-none overflow-hidden bg-transparent py-[11px] ps-4 pe-10 text-[17px] leading-[22px] text-black outline-none placeholder:text-black/30 dark:text-white dark:placeholder:text-white/30"
+      />
+      {value !== '' && (
+        // Konsta's own clear button (as on its ListInput), centered on the field however
+        // many lines it has.
+        <button
+          type="button"
+          aria-label="Clear"
+          onClick={() => onChange('')}
+          className="absolute end-4 top-1/2 -translate-y-1/2 text-black opacity-45 active:opacity-30 dark:text-white"
+        >
+          <svg viewBox="0 0 28 28" fill="currentColor" className="h-3.5 w-3.5" aria-hidden>
+            <path d="M14 0C21.73 0 28 6.27 28 14S21.73 28 14 28 0 21.73 0 14 6.27 0 14 0Zm4.94 6.94L14 11.88 9.06 6.94 6.94 9.06 11.88 14l-4.94 4.94 2.12 2.12L14 16.12l4.94 4.94 2.12-2.12L16.12 14l4.94-4.94-2.12-2.12Z" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
+/// A form row with its label on the left and the control filling the rest, like a
+/// segmented Picker in an iOS Form row.
+function LabeledRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <li className="flex min-h-11 items-center gap-4 px-4 py-2 text-[17px] text-black dark:text-white">
+      <span className="shrink-0">{label}</span>
+      <div className="min-w-0 flex-1">{children}</div>
+    </li>
   );
 }
 
