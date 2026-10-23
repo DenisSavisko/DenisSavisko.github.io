@@ -12,6 +12,7 @@ import { FailedTab, pendingFailedCount } from './FailedTab';
 import { VerifyModal } from './VerifyModal';
 import { Intro } from './Intro';
 import { Paywall } from './Paywall';
+import { giftCodeFromURL } from './giftCode';
 import { useSubscription } from './useSubscription';
 import { AppleSignInButton } from './AppleSignInButton';
 import { AddGoalSheet } from './AddGoalSheet';
@@ -204,6 +205,10 @@ export default function App() {
           ) : token ? (
             <Block strong inset className="mt-10 text-center text-black/55 dark:text-white/55">
               Sign in to confirm your friend's goal.
+            </Block>
+          ) : giftCodeFromURL() ? (
+            <Block strong inset className="mt-10 text-center text-black/55 dark:text-white/55">
+              You've got a gift: lifetime access, free. Sign in to get it.
             </Block>
           ) : (
             <Intro />

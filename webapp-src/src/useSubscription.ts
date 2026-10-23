@@ -18,8 +18,9 @@ export interface Subscription {
   /// Where a subscriber cancels or updates their card: RevenueCat's portal for a web
   /// subscription (Apple's subscriptions page for an iPhone one). Null with nothing to manage.
   managementURL: string | null;
-  /// Resolves true once paid, false if the person closed the checkout.
-  purchase: (pkg: Package) => Promise<boolean>;
+  /// Resolves true once paid, false if the person closed the checkout. discountCode: a gift
+  /// link's code (see giftCode.ts), which RevenueCat applies at checkout.
+  purchase: (pkg: Package, discountCode?: string) => Promise<boolean>;
 }
 
 export function useSubscription(userRecordName: string | null): Subscription {
@@ -57,9 +58,9 @@ export function useSubscription(userRecordName: string | null): Subscription {
     };
   }, [userRecordName]);
 
-  const purchase = useCallback(async (pkg: Package) => {
+  const purchase = useCallback(async (pkg: Package, discountCode?: string) => {
     try {
-      const { customerInfo } = await Purchases.getSharedInstance().purchase({ rcPackage: pkg });
+      const { customerInfo } = await Purchases.getSharedInstance().purchase({ rcPackage: pkg, discountCode });
       const entitled = ENTITLEMENT_ID in customerInfo.entitlements.active;
       setAccess(entitled ? 'granted' : 'denied');
       setManagementURL(customerInfo.managementURL);

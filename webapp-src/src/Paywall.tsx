@@ -5,6 +5,7 @@ import { Block, Button, Preloader } from 'konsta/react';
 import { PackageType, PeriodUnit, type Package, type Period } from '@revenuecat/purchases-js';
 import type { Subscription } from './useSubscription';
 import { CheckCircleIcon } from './icons';
+import { clearGiftCodeFromURL, giftCodeFromURL } from './giftCode';
 
 const FEATURES = [
   'Three goals with real deadlines',
@@ -14,6 +15,9 @@ const FEATURES = [
 
 export function Paywall({ subscription }: { subscription: Subscription }) {
   const { packages, loadError, purchase } = subscription;
+  // A gift link skips the choice: it's always the lifetime plan, at $0.
+  const [giftCode] = useState(giftCodeFromURL);
+  const lifetime = packages.find((p) => p.packageType === PackageType.Lifetime) ?? null;
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,14 +26,14 @@ export function Paywall({ subscription }: { subscription: Subscription }) {
     if (!packages.some((p) => p.identifier === selectedId)) setSelectedId(packages[0]?.identifier ?? null);
   }, [packages, selectedId]);
 
-  const selected = packages.find((p) => p.identifier === selectedId) ?? null;
+  const selected = giftCode ? lifetime : (packages.find((p) => p.identifier === selectedId) ?? null);
 
   async function handlePurchase() {
     if (!selected) return;
     setIsPurchasing(true);
     setError(null);
     try {
-      await purchase(selected);
+      if ((await purchase(selected, giftCode ?? undefined)) && giftCode) clearGiftCodeFromURL();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -39,7 +43,12 @@ export function Paywall({ subscription }: { subscription: Subscription }) {
 
   return (
     <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-2 pb-10">
-      <h2 className="px-2 text-center text-3xl font-bold">Commit to what matters.</h2>
+      <h2 className="px-2 text-center text-3xl font-bold">
+        {giftCode ? "You've got a gift." : 'Commit to what matters.'}
+      </h2>
+      {giftCode && (
+        <p className="-mt-3 text-center text-black/55 dark:text-white/55">Lifetime access, free.</p>
+      )}
 
       <ul className="flex flex-col gap-3 px-2">
         {FEATURES.map((feature) => (
@@ -50,7 +59,7 @@ export function Paywall({ subscription }: { subscription: Subscription }) {
         ))}
       </ul>
 
-      {packages.length === 0 ? (
+      {giftCode ? null : packages.length === 0 ? (
         loadError ? (
           <Block className="text-center text-black/55 dark:text-white/55">{loadError}</Block>
         ) : (
@@ -95,10 +104,18 @@ export function Paywall({ subscription }: { subscription: Subscription }) {
 
       <div className="flex flex-col gap-3">
         <Button large rounded disabled={!selected || isPurchasing} onClick={handlePurchase}>
-          {isPurchasing ? <Preloader className="h-5 w-5" /> : selected && trial(selected) ? 'Start Free Trial' : 'Continue'}
+          {isPurchasing ? (
+            <Preloader className="h-5 w-5" />
+          ) : giftCode ? (
+            'Get Your Gift'
+          ) : selected && trial(selected) ? (
+            'Start Free Trial'
+          ) : (
+            'Continue'
+          )}
         </Button>
         {error && <p className="text-center text-sm text-red-500">{error}</p>}
-        {selected && <p className="text-center text-xs text-black/55 dark:text-white/55">{terms(selected)}</p>}
+        {selected && !giftCode && <p className="text-center text-xs text-black/55 dark:text-white/55">{terms(selected)}</p>}
         <p className="text-center text-xs text-black/55 dark:text-white/55">
           Subscribed on iPhone? It unlocks here with the same Apple Account.{' '}
           <a href="https://mymaingoals.app/web-privacy-policy.html" className="text-primary">
