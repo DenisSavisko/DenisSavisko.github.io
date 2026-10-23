@@ -17,7 +17,7 @@ const IPHONE_APP_URL = 'https://open.mymaingoals.app/';
 /// to the other app (here the iPhone app, there the web version), styled as a link that
 /// leaves the browser. Lower on the screen also keeps that link in easy thumb reach for the
 /// common round trip: stake a goal here, then hop back to the app.
-export function SettingsTab() {
+export function SettingsTab({ managementURL }: { managementURL: string | null }) {
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   async function handleSignOut() {
@@ -45,6 +45,21 @@ export function SettingsTab() {
           onClick={isSigningOut ? undefined : handleSignOut}
         />
       </List>
+
+      {/* Cancelling has to be easy to find on the site itself, not only in the receipt email
+          (California's auto-renewal law). */}
+      {managementURL && (
+        <List strong inset>
+          <ListItem
+            link
+            chevron={false}
+            href={managementURL}
+            target="_blank"
+            title={<span className="text-primary">Manage Subscription</span>}
+            after={<ArrowUpForwardIcon className="h-4 w-4 text-black/55 dark:text-white/55" />}
+          />
+        </List>
+      )}
 
       <List strong inset>
         <ListItem

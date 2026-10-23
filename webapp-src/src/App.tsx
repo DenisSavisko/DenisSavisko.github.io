@@ -269,7 +269,7 @@ export default function App() {
                 positioning internally, and fighting that with a conflicting position utility
                 on the same element is what was making the old edge-to-edge Tabbar not render
                 like Konsta's real native-style chrome. */}
-            {tab === 'settings' && <SettingsTab />}
+            {tab === 'settings' && <SettingsTab managementURL={subscription.managementURL} />}
 
             {/* Not on Settings: adding a goal has nothing to do with it, and it would sit over
                 its rows — same as the iOS app. */}

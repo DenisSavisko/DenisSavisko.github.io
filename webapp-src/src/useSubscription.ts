@@ -15,6 +15,9 @@ export interface Subscription {
   access: Access;
   packages: Package[];
   loadError: string | null;
+  /// Where a subscriber cancels or updates their card: RevenueCat's portal for a web
+  /// subscription (Apple's subscriptions page for an iPhone one). Null with nothing to manage.
+  managementURL: string | null;
   /// Resolves true once paid, false if the person closed the checkout.
   purchase: (pkg: Package) => Promise<boolean>;
 }
@@ -23,6 +26,7 @@ export function useSubscription(userRecordName: string | null): Subscription {
   const [access, setAccess] = useState<Access>('unknown');
   const [packages, setPackages] = useState<Package[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [managementURL, setManagementURL] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userRecordName) return;
@@ -31,10 +35,11 @@ export function useSubscription(userRecordName: string | null): Subscription {
       ? Purchases.getSharedInstance()
       : Purchases.configure({ apiKey: API_KEY, appUserId: userRecordName });
 
-    Promise.all([purchases.isEntitledTo(ENTITLEMENT_ID), purchases.getOfferings()])
-      .then(([entitled, offerings]) => {
+    Promise.all([purchases.getCustomerInfo(), purchases.getOfferings()])
+      .then(([customerInfo, offerings]) => {
         if (cancelled) return;
-        setAccess(entitled ? 'granted' : 'denied');
+        setAccess(ENTITLEMENT_ID in customerInfo.entitlements.active ? 'granted' : 'denied');
+        setManagementURL(customerInfo.managementURL);
         const available = [...(offerings.current?.availablePackages ?? [])].sort(
           (a, b) => order(a) - order(b)
         );
@@ -57,6 +62,7 @@ export function useSubscription(userRecordName: string | null): Subscription {
       const { customerInfo } = await Purchases.getSharedInstance().purchase({ rcPackage: pkg });
       const entitled = ENTITLEMENT_ID in customerInfo.entitlements.active;
       setAccess(entitled ? 'granted' : 'denied');
+      setManagementURL(customerInfo.managementURL);
       return entitled;
     } catch (error) {
       if (error instanceof PurchasesError && error.errorCode === ErrorCode.UserCancelledError) return false;
@@ -64,7 +70,7 @@ export function useSubscription(userRecordName: string | null): Subscription {
     }
   }, []);
 
-  return { access, packages, loadError, purchase };
+  return { access, packages, loadError, managementURL, purchase };
 }
 
 function order(pkg: Package): number {
