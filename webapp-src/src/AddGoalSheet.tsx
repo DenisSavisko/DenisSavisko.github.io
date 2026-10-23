@@ -440,10 +440,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
               ))}
             </Segmented>
           </LabeledRow>
-        </List>
-
-        {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
-        <List strongIos insetIos>
+          {/* A segmented control of relative offsets, not a date/time picker, like iOS. */}
           <LabeledRow label="Deadline">
             <Segmented strong rounded>
               {DEADLINE_OPTIONS.map((option) => (
@@ -453,12 +450,9 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
               ))}
             </Segmented>
           </LabeledRow>
-        </List>
-
-        {/* Not gated on staking, mirroring AddTaskSheet: a friend confirming you did the
-            thing stands on its own, and createVerification's stake argument is already
-            nullable. */}
-        <List strongIos insetIos>
+          {/* Not gated on staking, mirroring AddTaskSheet: a friend confirming you did the
+              thing stands on its own, and createVerification's stake argument is already
+              nullable. */}
           <ListItem
             title="Require a friend's confirmation"
             after={<Toggle checked={requiresVerification} onChange={() => setRequiresVerification((v) => !v)} />}
@@ -525,12 +519,15 @@ function GoalTitleInput({ value, onChange }: { value: string; onChange: (value: 
 }
 
 /// A form row with its label on the left and the control filling the rest, like a
-/// segmented Picker in an iOS Form row.
+/// segmented Picker in an iOS Form row. Same inset divider as Konsta's ListItem, and one
+/// label width for every row, so the controls line up.
 function LabeledRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <li className="flex min-h-11 items-center gap-4 px-4 py-2 text-[17px] text-black dark:text-white">
-      <span className="shrink-0">{label}</span>
-      <div className="min-w-0 flex-1">{children}</div>
+    <li className="ps-4 text-[17px] text-black dark:text-white">
+      <div className="hairline-b relative flex min-h-11 items-center gap-3 py-2 pe-4">
+        <span className="w-[4.5rem] shrink-0">{label}</span>
+        <div className="min-w-0 flex-1">{children}</div>
+      </div>
     </li>
   );
 }
