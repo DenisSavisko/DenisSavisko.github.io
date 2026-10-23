@@ -14,6 +14,7 @@ import {
   Preloader,
   Segmented,
   SegmentedButton,
+  Sheet,
   Toggle,
 } from 'konsta/react';
 import { createGoal, getCloudKitContainer } from './cloudkit';
@@ -24,7 +25,6 @@ import { createStakedGoal } from './stakedGoal';
 import { formatStakeCents, mapRecord, type Goal } from './useGoals';
 import { consentRecord, stakeSummary } from './stakeConsent';
 import { PRIVACY_URL, STAKE_OPTIONS, stripePromise, TERMS_URL, TERMS_VERSION, type StakeOptionId } from './stripeConfig';
-import { SwipeSheet } from './SwipeSheet';
 
 // Apple Pay shows the total as "Pay <label>", and Apple's guidelines want the business name
 // there; what the amount is for goes on its own line above it.
@@ -340,7 +340,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
   if (step === 'card') {
     return (
-      <SwipeSheet opened={opened} onClose={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
+      <Sheet opened={opened} onBackdropClick={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
         <Navbar
           title="Card Details"
           left={<NavLink onClick={() => setStep('confirm')} disabled={isSaving}>Back</NavLink>}
@@ -370,13 +370,13 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           </List>
           <ErrorMessage message={errorMessage} />
         </div>
-      </SwipeSheet>
+      </Sheet>
     );
   }
 
   if (step === 'confirm') {
     return (
-      <SwipeSheet opened={opened} onClose={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
+      <Sheet opened={opened} onBackdropClick={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
         <Navbar title="Confirm Stake" left={<NavLink onClick={() => setStep('form')} disabled={isSaving}>Back</NavLink>} />
         <div className={STEP_BODY}>
           {/* Exactly this text, checkbox included, is sent with the hold as the consent
@@ -398,12 +398,12 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
           </Block>
           <ErrorMessage message={errorMessage} />
         </div>
-      </SwipeSheet>
+      </Sheet>
     );
   }
 
   return (
-    <SwipeSheet opened={opened} onClose={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
+    <Sheet opened={opened} onBackdropClick={close} colors={SHEET_COLORS} className="mx-auto max-w-(--k-app-max-w)">
       {/* Mirrors AddTaskSheet's toolbar exactly: Cancel top-left (.cancellationAction), "New
           Goal" centered title, Add top-right (.confirmationAction) swapped for a spinner
           while busy — not stacked full-width buttons at the bottom. */}
@@ -472,7 +472,7 @@ function AddGoalSheetContent({ opened, onClose, onCreated }: AddGoalSheetProps) 
 
         <ErrorMessage message={errorMessage} />
       </div>
-    </SwipeSheet>
+    </Sheet>
   );
 }
 

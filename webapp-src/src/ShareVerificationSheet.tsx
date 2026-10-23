@@ -1,6 +1,5 @@
-import { Button } from 'konsta/react';
+import { Button, Sheet } from 'konsta/react';
 import { formatStakeCents } from './useGoals';
-import { SwipeSheet } from './SwipeSheet';
 
 export interface ShareVerificationTarget {
   title: string;
@@ -59,7 +58,7 @@ export function ShareVerificationSheet({
   }
 
   return (
-    <SwipeSheet opened={target != null} onClose={onClose} className="mx-auto max-w-(--k-app-max-w)">
+    <Sheet opened={target != null} onBackdropClick={onClose} className="mx-auto max-w-(--k-app-max-w)">
       <div className="px-6 pb-10 pt-10 text-center">
         <h2 className="text-lg font-semibold">{headline}</h2>
         <p className="mt-2 text-sm text-black/55 dark:text-white/55">{message}</p>
@@ -70,6 +69,6 @@ export function ShareVerificationSheet({
           Done
         </Button>
       </div>
-    </SwipeSheet>
+    </Sheet>
   );
 }
