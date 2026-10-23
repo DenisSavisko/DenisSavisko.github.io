@@ -182,13 +182,20 @@ export default function App() {
   const hasAccess = subscription.access === 'granted' || isGrandfathered;
   const isCheckingAccess =
     !hasAccess && (subscription.access === 'unknown' || goalsState.status === 'idle' || goalsState.status === 'loading');
+  // The paywall's own headline is the page's heading; the app's large title over it looked
+  // misaligned.
+  const isShowingPaywall = isSignedIn && !hasAccess && !isCheckingAccess;
 
   return (
     <KonstaApp theme="ios" dark={isDark} safeAreas className="mx-auto max-w-(--k-app-max-w)">
       <Page ref={pageRef}>
         {/* Large title, like the iOS app's: left-aligned 34px bold that shrinks into the small
             centered title on scroll (Konsta tracks the Page it sits in). */}
-        <Navbar large transparent title={isSignedIn ? TAB_TITLES[tab] : TAB_TITLES.active} />
+        <Navbar
+          large={!isShowingPaywall}
+          transparent
+          title={isShowingPaywall ? '' : isSignedIn ? TAB_TITLES[tab] : TAB_TITLES.active}
+        />
         <AppleSignInButton visible={!isSignedIn && authState.status !== 'loading'} />
 
         {!isSignedIn ? (

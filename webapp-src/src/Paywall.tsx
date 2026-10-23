@@ -9,7 +9,6 @@ import { CheckCircleIcon } from './icons';
 const FEATURES = [
   'Three goals with real deadlines',
   "A friend confirms when you're done",
-  'Synced through iCloud',
   'Stake money for extra motivation',
 ];
 
@@ -39,7 +38,7 @@ export function Paywall({ subscription }: { subscription: Subscription }) {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col gap-6 px-4 pt-4 pb-16">
+    <div className="mx-auto flex max-w-md flex-col gap-5 px-4 pt-2 pb-10">
       <h2 className="px-2 text-center text-3xl font-bold">Commit to what matters.</h2>
 
       <ul className="flex flex-col gap-3 px-2">
@@ -70,7 +69,7 @@ export function Paywall({ subscription }: { subscription: Subscription }) {
                 role="radio"
                 aria-checked={isSelected}
                 onClick={() => setSelectedId(pkg.identifier)}
-                className={`flex items-center gap-3 rounded-2xl border-2 bg-black/5 p-4 text-left dark:bg-white/10 ${
+                className={`flex items-center gap-3 rounded-2xl border-2 bg-black/5 px-4 py-3 text-left dark:bg-white/10 ${
                   isSelected ? 'border-primary' : 'border-transparent'
                 }`}
               >
