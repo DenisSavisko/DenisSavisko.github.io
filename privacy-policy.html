@@ -26,11 +26,9 @@
   <ul>
     <li><strong>An anonymous identifier.</strong> The app signs in anonymously (via Supabase)
     so friend-confirmation links can work. No name, email, or password is ever requested.</li>
-    <li><strong>Sign in with Apple, only if you choose to.</strong> Signing in is optional
-    (Settings in the app) and only creates an account shared with the MyMainGoals web version.
-    We receive the stable identifier Apple issues for this app and nothing else — we don't
-    request your name or email address, and Apple doesn't share your real Apple ID with
-    us.</li>
+    <li><strong>Sign in with Apple, in version 1.6 and earlier only.</strong> Those versions
+    offered an optional sign-in. If you used it, we received only the stable identifier Apple
+    issues for this app, never your name or email address.</li>
     <li><strong>Your goals.</strong> Titles, deadlines, and completion status. These sync
     across your own devices via your personal iCloud account (Apple's CloudKit) and are not
     visible to us.</li>
@@ -53,8 +51,8 @@
   with anyone else.</p>
 
   <h2>Deleting your data</h2>
-  <p>If you signed in, you can delete your account at any time from <strong>Settings</strong>
-  in the app; you'll be asked whether to erase your goals as well. Deleting a goal in the app
+  <p>If you signed in on version 1.6 or earlier, you can have that account deleted by
+  contacting us via the <a href="support.html">Support</a> page. Deleting a goal in the app
   removes it from your iCloud. To have a friend-confirmation record removed from our backend,
   contact us via the <a href="support.html">Support</a> page.</p>
 
