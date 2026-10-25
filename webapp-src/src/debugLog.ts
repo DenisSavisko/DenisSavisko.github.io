@@ -94,6 +94,52 @@ function watchApplePay() {
   }
 }
 
+/// What the page asks Apple Pay for, which Stripe account the checkout uses, and who calls
+/// abort(): Stripe aborts the sheet itself when merchant validation fails.
+function watchSetup() {
+  const OriginalSession = (window as unknown as { ApplePaySession?: new (...a: unknown[]) => object }).ApplePaySession;
+  if (OriginalSession) {
+    const Logged = class extends OriginalSession {
+      constructor(...args: unknown[]) {
+        log('[apple pay] new session', args[0], args[1]);
+        super(...args);
+      }
+    };
+    (window as unknown as { ApplePaySession: unknown }).ApplePaySession = Logged;
+    const proto = OriginalSession.prototype as Record<string, unknown>;
+    const addEventListener = proto.addEventListener as (...a: unknown[]) => unknown;
+    proto.addEventListener = function (this: unknown, type: unknown, listener: unknown, ...rest: unknown[]) {
+      const wrapped =
+        typeof listener === 'function'
+          ? (event: unknown) => {
+              log(`[apple pay] event ${String(type)}`);
+              return (listener as (e: unknown) => unknown).call(this, event);
+            }
+          : listener;
+      return addEventListener.call(this, type, wrapped, ...rest);
+    };
+    const abort = proto.abort as (...a: unknown[]) => unknown;
+    proto.abort = function (this: unknown, ...args: unknown[]) {
+      log('[apple pay] abort called from', new Error().stack?.split('\n').slice(1, 6).join(' | '));
+      return abort.apply(this, args);
+    };
+  }
+  let stripe: unknown;
+  Object.defineProperty(window, 'Stripe', {
+    configurable: true,
+    get: () => stripe,
+    set(value) {
+      stripe =
+        typeof value === 'function'
+          ? Object.assign(function (this: unknown, key: string, options?: unknown) {
+              log('[stripe] init', key.slice(0, 20) + '…', options);
+              return (value as (...a: unknown[]) => unknown).call(this, key, options);
+            }, value)
+          : value;
+    },
+  });
+}
+
 function showPanel() {
   const container = document.createElement('div');
   container.style.cssText =
@@ -115,6 +161,7 @@ if (IS_DEBUG) {
   watchConsole();
   watchRequests();
   watchApplePay();
+  watchSetup();
   Purchases.setLogLevel(LogLevel.Verbose);
   log('debug on', navigator.userAgent);
   if (document.body) showPanel();
