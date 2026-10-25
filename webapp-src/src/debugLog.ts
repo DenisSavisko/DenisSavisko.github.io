@@ -97,15 +97,15 @@ function watchApplePay() {
 function showPanel() {
   const container = document.createElement('div');
   container.style.cssText =
-    'position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top) + 8px);z-index:2147483647;background:rgba(0,0,0,.85);color:#fff;border-radius:12px;padding:8px;font:11px/1.35 ui-monospace,monospace;';
+    'position:fixed;left:8px;right:8px;bottom:calc(env(safe-area-inset-bottom) + 8px);z-index:2147483647;pointer-events:none;background:rgba(0,0,0,.8);color:#fff;border-radius:12px;padding:8px;font:11px/1.35 ui-monospace,monospace;';
   const copy = document.createElement('button');
   copy.textContent = 'Copy log';
-  copy.style.cssText = 'color:#4af;font-weight:600;margin-bottom:4px;';
+  copy.style.cssText = 'color:#4af;font-weight:600;margin-bottom:4px;pointer-events:auto;';
   copy.onclick = () => {
     void navigator.clipboard.writeText(lines.join('\n')).then(() => (copy.textContent = 'Copied'));
   };
   panel = document.createElement('pre');
-  panel.style.cssText = 'max-height:30vh;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:0;';
+  panel.style.cssText = 'max-height:22vh;overflow:auto;white-space:pre-wrap;word-break:break-all;margin:0;';
   panel.textContent = lines.join('\n');
   container.append(copy, panel);
   document.body.append(container);
