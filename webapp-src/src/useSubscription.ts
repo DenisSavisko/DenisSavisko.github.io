@@ -64,6 +64,7 @@ export function useSubscription(userRecordName: string | null): Subscription {
       const entitled = ENTITLEMENT_ID in customerInfo.entitlements.active;
       setAccess(entitled ? 'granted' : 'denied');
       setManagementURL(customerInfo.managementURL);
+      if (entitled) trackPurchase(pkg);
       return entitled;
     } catch (error) {
       if (error instanceof PurchasesError && error.errorCode === ErrorCode.UserCancelledError) return false;
@@ -77,4 +78,15 @@ export function useSubscription(userRecordName: string | null): Subscription {
 function order(pkg: Package): number {
   const index = PACKAGE_ORDER.indexOf(pkg.packageType);
   return index === -1 ? PACKAGE_ORDER.length : index;
+}
+
+// Meta Pixel (index.html): a trial start or a paid purchase, so ads can optimize for it.
+function trackPurchase(pkg: Package) {
+  const fbq = (window as { fbq?: (...args: unknown[]) => void }).fbq;
+  if (!fbq) return;
+  if (pkg.product.freeTrialPhase) {
+    fbq('track', 'StartTrial', { value: 0, currency: pkg.product.price.currency });
+  } else {
+    fbq('track', 'Purchase', { value: pkg.product.price.amountMicros / 1e6, currency: pkg.product.price.currency });
+  }
 }
