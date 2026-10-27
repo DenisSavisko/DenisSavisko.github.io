@@ -54,8 +54,6 @@ const DISABLED_FAB_COLORS = {
   textIos: 'text-black/30 dark:text-white/30',
 };
 
-const FORCES_PAYWALL = new URLSearchParams(window.location.search).has('paywall');
-
 export default function App() {
   const [tab, setTab] = useState<Tab>('active');
   const [token, setToken] = useState<string | null>(() => parseToken());
@@ -173,8 +171,7 @@ export default function App() {
   const isSignedIn = authState.status === 'signed-in';
   const subscription = useSubscription(authState.status === 'signed-in' ? authState.userRecordName : null);
   // Paid access, a gift (a RevenueCat grant) included; same rule as the iPhone app.
-  // ?paywall shows the paywall anyway, to test the real checkout from an account that has access.
-  const hasAccess = subscription.access === 'granted' && !FORCES_PAYWALL;
+  const hasAccess = subscription.access === 'granted';
   const isCheckingAccess = subscription.access === 'unknown';
   // The paywall's own headline is the page's heading; the app's large title over it looked
   // misaligned.
