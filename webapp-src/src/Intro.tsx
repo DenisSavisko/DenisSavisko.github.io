@@ -5,10 +5,10 @@ import type { ComponentType, SVGProps } from 'react';
 import { ClockIcon, DollarCircleIcon, PeopleIcon, TargetIcon } from './icons';
 
 const ROWS: Array<{ Icon: ComponentType<SVGProps<SVGSVGElement>>; title: string; detail: string }> = [
-  { Icon: TargetIcon, title: "Three goals. That's it.", detail: 'Focus on what matters most.' },
-  { Icon: ClockIcon, title: 'Every goal has a deadline.', detail: 'Finish in time, or it counts as failed.' },
-  { Icon: PeopleIcon, title: 'Get a friend to confirm.', detail: "It's done when they say it is." },
-  { Icon: DollarCircleIcon, title: 'Put money on it.', detail: 'Stake money for extra motivation.' },
+  { Icon: TargetIcon, title: 'Three goals. The rest is noise.', detail: 'Finish one before adding another.' },
+  { Icon: ClockIcon, title: 'Due in days, not someday.', detail: '1 hour to 5 days. No snoozing.' },
+  { Icon: PeopleIcon, title: 'Need extra motivation?', detail: "Add a friend's confirmation." },
+  { Icon: DollarCircleIcon, title: 'Put money on it.', detail: 'Lose it only if you miss.' },
 ];
 
 export function Intro() {
