@@ -8,7 +8,7 @@ const ROWS: Array<{ Icon: ComponentType<SVGProps<SVGSVGElement>>; title: string;
   { Icon: TargetIcon, title: 'Three goals. The rest is noise.', detail: 'Finish one before adding another.' },
   { Icon: ClockIcon, title: 'Due in days, not someday.', detail: '1 hour to 5 days. No snoozing.' },
   { Icon: PeopleIcon, title: 'Need extra motivation?', detail: "Add a friend's confirmation." },
-  { Icon: DollarCircleIcon, title: 'Put money on it.', detail: 'Lose it only if you miss.' },
+  { Icon: DollarCircleIcon, title: 'Need more motivation?', detail: 'Put money on the line.' },
 ];
 
 export function Intro() {
