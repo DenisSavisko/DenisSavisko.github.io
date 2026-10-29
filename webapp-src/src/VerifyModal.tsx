@@ -17,16 +17,19 @@ type OwnedGoal = Goal | null | undefined;
 /// Opens as a bottom sheet over the Goals tab (mirrors VerifyGoalView being presented as a
 /// sheet over the app's main task list on iOS) — never a separate page, and closing it
 /// (✕, backdrop tap, or the 1.5s auto-close right after confirming) always leaves the Goals
-/// tab underneath untouched. It only opens while signed in (App.tsx passes a null token
+/// tab underneath untouched. A friend without a subscription isn't auto-closed onto the
+/// paywall: they've just seen the app work, so the sheet invites them to try it instead. It only opens while signed in (App.tsx passes a null token
 /// otherwise), so the app's one Apple sign-in button never has to appear in here — see
 /// AppleSignInButton's comment for why there's only ever one such element on the page.
 export function VerifyModal({
   token,
   authStatus,
+  hasAccess,
   onClose,
 }: {
   token: string | null;
   authStatus: CloudKitAuthState['status'];
+  hasAccess: boolean;
   onClose: () => void;
 }) {
   const [info, setInfo] = useState<VerificationInfo | null>(null);
@@ -81,10 +84,10 @@ export function VerifyModal({
   // Only auto-closes right after the person's own tap confirms it — matches VerifyGoalView's
   // onChange(of: didConfirm), which doesn't auto-dismiss when the screen loads already-verified.
   useEffect(() => {
-    if (confirmState !== 'confirmed') return;
+    if (confirmState !== 'confirmed' || !hasAccess) return;
     const timer = setTimeout(onClose, 1500);
     return () => clearTimeout(timer);
-  }, [confirmState, onClose]);
+  }, [confirmState, hasAccess, onClose]);
 
   async function handleConfirm() {
     if (!token) return;
@@ -122,6 +125,7 @@ export function VerifyModal({
           confirmState,
           confirmErrorMessage,
           authStatus,
+          showsYourTurn: confirmState === 'confirmed' && !hasAccess,
           onConfirm: handleConfirm,
         })}
       </div>
@@ -137,6 +141,7 @@ function renderBody({
   confirmState,
   confirmErrorMessage,
   authStatus,
+  showsYourTurn,
   onConfirm,
 }: {
   token: string | null;
@@ -146,6 +151,7 @@ function renderBody({
   confirmState: ConfirmState;
   confirmErrorMessage: string | null;
   authStatus: CloudKitAuthState['status'];
+  showsYourTurn: boolean;
   onConfirm: () => void;
 }) {
   if (!token) return null;
@@ -169,6 +175,14 @@ function renderBody({
         <CheckCircleIcon className="mx-auto h-12 w-12 text-green-500" />
         <h2 className="mt-3 text-lg font-semibold">Confirmed!</h2>
         <p className="text-sm text-black/55 dark:text-white/55">{info.task_title}</p>
+        {showsYourTurn && (
+          <>
+            <p className="mt-6 font-medium">Your turn. What are your three goals?</p>
+            <Button large rounded component="a" href="https://apps.apple.com/app/id6806742917" className="mt-4">
+              Get the App
+            </Button>
+          </>
+        )}
       </>
     );
   }

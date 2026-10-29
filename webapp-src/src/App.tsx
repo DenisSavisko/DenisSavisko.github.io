@@ -324,6 +324,7 @@ export default function App() {
       <VerifyModal
         token={isSignedIn ? token : null}
         authStatus={authState.status}
+        hasAccess={subscription.access !== 'denied'}
         onClose={closeVerifyModal}
       />
 
